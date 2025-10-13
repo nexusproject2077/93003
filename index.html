@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Ticket</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1c0000, #000);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            overflow-x: hidden;
+        }
+        h1 {
+            font-size: 3.5em;
+            color: #ffd700;
+            text-shadow: 3px 3px #ff0000;
+            margin: 20px 0;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        #clock {
+            font-size: 1.8em;
+            color: #ff4444;
+            background: #222;
+            padding: 10px 20px;
+            border: 2px solid #ffd700;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 10px auto;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+        #chat-box {
+            width: 90%;
+            max-width: 600px;
+            height: 450px;
+            border: 3px solid #ffd700;
+            padding: 15px;
+            overflow-y: auto;
+            margin: 20px auto;
+            background: #111;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+        }
+        .user-message {
+            text-align: right;
+            margin: 8px 12px;
+            padding: 10px;
+            background: #cc0000;
+            border-radius: 8px;
+            color: #fff;
+            max-width: 70%;
+            margin-left: auto;
+            font-size: 1.1em;
+        }
+        .bot-message {
+            text-align: left;
+            margin: 8px 12px;
+            padding: 10px;
+            background: #004400;
+            border-radius: 8px;
+            color: #fff;
+            max-width: 70%;
+            margin-right: auto;
+            font-size: 1.1em;
+            white-space: pre-wrap;
+        }
+        #input-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px auto;
+            width: 90%;
+            max-width: 600px;
+            flex-wrap: wrap;
+        }
+        #user-input {
+            padding: 12px;
+            font-size: 1.2em;
+            margin: 5px;
+            border: 2px solid #ffd700;
+            background: #222;
+            color: #fff;
+            border-radius: 5px;
+            flex: 1;
+            min-width: 200px;
+        }
+        #send-button {
+            padding: 12px 25px;
+            font-size: 1.2em;
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        #send-button:hover {
+            background: #ffd700;
+            color: #000;
+            transform: scale(1.05);
+        }
+        .warning {
+            color: #ff4444;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 20px auto;
+            text-shadow: 1px 1px #000;
+        }
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            color: #666;
+            font-size: 0.9em;
+            text-shadow: 1px 1px #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>GÉNÉRATEUR DE TICKETS</h1>
+    <div id="clock"></div>
+    <p class="warning">Tape "1h" pour un ticket bidon, mais si les contrôleurs te chopent, t’es mort, loser !</p>
+
+    <div id="chat-box"></div>
+
+    <div id="input-container">
+        <input type="text" id="user-input" placeholder="Tape un message">
+        <button id="send-button">Envoyer</button>
+    </div>
+
+    <div class="footer">
+        Par un caïd qui se marre pendant que t’essaies de frauder. T’es dans la merde, haha !
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const clock = document.getElementById('clock');
+
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            clock.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function addMessage(className, message) {
+            const msg = document.createElement('div');
+            msg.className = className;
+            msg.textContent = message;
+            chatBox.appendChild(msg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function formatDate(date) {
+            return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getFullYear()).slice(-2)}`;
+        }
+
+        function formatTime(date) {
+            return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function generateRandomSequence() {
+            return Array.from({ length: 6 }, () =>
+                String(Math.floor(Math.random() * 100)).padStart(2, '0')
+            ).join("'");
+        }
+
+        function generateRandomLetter() {
+            return String.fromCharCode(65 + Math.floor(Math.random() * 26));
+        }
+
+        function generateRandomCode() {
+            const letter1 = generateRandomLetter();
+            let letter2, letter3;
+            do {
+                letter2 = generateRandomLetter();
+            } while (letter2 === letter1);
+            do {
+                letter3 = generateRandomLetter();
+            } while (letter3 === letter1 || letter3 === letter2);
+            const digit = Math.floor(Math.random() * 10);
+            return `${letter1}${digit}${letter2}${letter3}`;
+        }
+
+        sendButton.addEventListener('click', () => {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            addMessage('user-message', message);
+            userInput.value = '';
+
+            if (message === '1h') {
+                const now = new Date();
+                const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+
+                const ticket = `Titre 1 voyage\n\nValable 1 heure dès réception du SMS\nLe ${formatDate(now)}\nDe ${formatTime(now)} à ${formatTime(oneHourLater)}\n\n1.35 E\n\n${generateRandomSequence()}\n\n0783643942${generateRandomCode()}\n\nCGV : www.tcat.fr/cgv-ticket-sms`;
+
+                addMessage('bot-message', ticket);
+
+                navigator.clipboard.writeText(ticket)
+                    .then(() => console.log('Ticket copié dans le presse-papiers'))
+                    .catch(err => console.error('Erreur de copie :', err));
+            }
+        });
+    </script>
+</body>
+</html>
