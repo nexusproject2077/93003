@@ -37,6 +37,42 @@
             margin: 10px auto;
             box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
         }
+        /* Styles pour l'espace publicitaire (Bannière) */
+        .ad-banner {
+            background: linear-gradient(145deg, #cc0000, #990000); /* Dégradé rouge foncé */
+            border: 2px solid #ff4444; /* Bordure rouge vif */
+            color: #fff;
+            padding: 10px;
+            margin: 20px auto;
+            width: 90%; 
+            max-width: 320px; /* Limite la largeur max à 320px */
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(255, 68, 68, 0.7); /* Ombre rougeoyante */
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .ad-banner:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 25px rgba(255, 68, 68, 1);
+        }
+        .ad-banner span.star-icon {
+            color: #ffd700; /* Couleur jaune-or pour l'icône/étoile */
+            font-size: 1.5em;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .ad-dimensions {
+            display: block;
+            font-size: 0.9em;
+            font-weight: normal;
+            margin-top: 5px;
+            color: #ffcccc;
+        }
+        /* Fin des styles de la bannière */
+
         #chat-box {
             width: 90%;
             max-width: 600px;
@@ -128,6 +164,11 @@
 <body>
     <h1>GÉNÉRATEUR DE TICKETS</h1>
     <div id="clock"></div>
+
+    <div class="ad-banner">
+        <span class="star-icon">⭐</span> Bannière Publicitaire
+        <span class="ad-dimensions">320x50 / 320x100 (Espace Publicitaire)</span>
+    </div>
     <p class="warning">Tape "1h" pour un ticket bidon, mais si les contrôleurs te chopent, t’es mort, loser !</p>
 
     <div id="chat-box"></div>
