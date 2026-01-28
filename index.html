@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Générateur de Ticket avec IA</title>
+    <title>Générateur de Ticket avec IA Avancée</title>
     <style>
         * {
             box-sizing: border-box;
@@ -93,13 +93,65 @@
             text-shadow: 1px 1px #000;
             padding: 0 10px;
         }
+
+        .api-status {
+            font-size: 0.9em;
+            color: #ffd700;
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        .api-key-setup {
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px auto;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .api-key-setup input {
+            width: 70%;
+            padding: 10px;
+            font-size: 1em;
+            border: 2px solid #ffd700;
+            background: #222;
+            color: #fff;
+            border-radius: 5px;
+            margin: 5px;
+        }
+
+        .api-key-setup button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background: #00cc00;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .api-key-setup button:hover {
+            background: #00ff00;
+            transform: scale(1.05);
+        }
+
+        .api-key-setup a {
+            color: #ffd700;
+            text-decoration: underline;
+        }
         
         #chat-box {
             width: 90%;
             max-width: 600px;
             flex: 1;
             min-height: 200px;
-            max-height: calc(100vh - 400px);
+            max-height: calc(100vh - 450px);
             border: 3px solid #ffd700;
             padding: 15px;
             overflow-y: auto;
@@ -116,9 +168,10 @@
             background: #cc0000;
             border-radius: 8px;
             color: #fff;
-            max-width: 70%;
+            max-width: 80%;
             margin-left: auto;
-            font-size: 1.1em;
+            font-size: 1em;
+            word-wrap: break-word;
         }
         
         .bot-message {
@@ -128,10 +181,11 @@
             background: #004400;
             border-radius: 8px;
             color: #fff;
-            max-width: 70%;
+            max-width: 80%;
             margin-right: auto;
-            font-size: 1.1em;
+            font-size: 1em;
             white-space: pre-wrap;
+            word-wrap: break-word;
         }
         
         .typing-indicator {
@@ -233,7 +287,7 @@
             }
             
             #chat-box {
-                max-height: calc(100vh - 350px);
+                max-height: calc(100vh - 400px);
                 padding: 10px;
             }
             
@@ -257,11 +311,21 @@
                 padding: 10px 15px;
                 font-size: 1em;
             }
+
+            .api-key-setup input {
+                width: 100%;
+                margin: 5px 0;
+            }
+
+            .api-key-setup button {
+                width: 100%;
+                margin: 5px 0;
+            }
         }
         
         @media (max-width: 480px) {
             #chat-box {
-                max-height: calc(100vh - 320px);
+                max-height: calc(100vh - 380px);
             }
             
             .ad-banner {
@@ -276,14 +340,27 @@
     </style>
 </head>
 <body>
-    <h1>GÉNÉRATEUR DE TICKETS + IA</h1>
+    <h1>GÉNÉRATEUR + IA AVANCÉE</h1>
     <div id="clock"></div>
 
     <div class="ad-banner">
         <span class="star-icon">⭐</span> Bannière Publicitaire
         <span class="ad-dimensions">320x50 / 320x100 (Espace Publicitaire)</span>
     </div>
-    <p class="warning">Tape "1h" pour un ticket ou pose-moi n'importe quelle question !</p>
+
+    <div id="api-setup" class="api-key-setup">
+        <p style="color: #ffd700; font-weight: bold;">🔑 Configuration API Groq (Gratuit)</p>
+        <p style="font-size: 0.9em;">1. Crée un compte sur <a href="https://console.groq.com" target="_blank">console.groq.com</a></p>
+        <p style="font-size: 0.9em;">2. Génère une clé API gratuite</p>
+        <p style="font-size: 0.9em;">3. Colle-la ci-dessous :</p>
+        <input type="text" id="api-key-input" placeholder="Colle ta clé API Groq ici">
+        <button onclick="saveApiKey()">Sauvegarder</button>
+        <p style="font-size: 0.8em; color: #ff4444; margin-top: 10px;">Ta clé est stockée localement dans ton navigateur 🔒</p>
+    </div>
+
+    <div class="api-status" id="api-status">🔴 API non configurée</div>
+    
+    <p class="warning">Tape "1h" pour un ticket ou pose n'importe quelle question à l'IA !</p>
 
     <div id="chat-box"></div>
 
@@ -293,7 +370,7 @@
     </div>
 
     <div class="footer">
-        Générateur avec IA gratuite intégrée - Propulsé par Hugging Face
+        IA Avancée gratuite - Propulsé par Groq (Llama 3.3)
     </div>
 
     <script>
@@ -301,9 +378,33 @@
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
         const clock = document.getElementById('clock');
+        const apiStatus = document.getElementById('api-status');
+        const apiSetup = document.getElementById('api-setup');
+        
+        let conversationHistory = [];
+        let apiKey = localStorage.getItem('groq_api_key');
 
-        // Message de bienvenue
-        addMessage('bot-message', "Salut ! Je suis ton assistant IA. Tape '1h' pour générer un ticket ou pose-moi n'importe quelle question !");
+        // Vérifier si l'API est configurée
+        if (apiKey) {
+            apiSetup.style.display = 'none';
+            apiStatus.textContent = '🟢 IA connectée';
+            apiStatus.style.color = '#00ff00';
+            addMessage('bot-message', "Salut ! Je suis une IA avancée comme ChatGPT. Pose-moi n'importe quelle question ou tape '1h' pour générer un ticket !");
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if (key) {
+                localStorage.setItem('groq_api_key', key);
+                apiKey = key;
+                apiSetup.style.display = 'none';
+                apiStatus.textContent = '🟢 IA connectée';
+                apiStatus.style.color = '#00ff00';
+                addMessage('bot-message', "Parfait ! L'IA est maintenant connectée. Pose-moi n'importe quelle question !");
+            } else {
+                alert('Merci d\'entrer une clé API valide');
+            }
+        }
 
         function updateClock() {
             const now = new Date();
@@ -371,93 +472,76 @@
             return `${letter1}${digit}${letter2}${letter3}`;
         }
 
-        async function getAIResponse(message) {
+        async function getGroqAIResponse(message) {
+            if (!apiKey) {
+                return "⚠️ Merci de configurer ton API Groq pour utiliser l'IA avancée. Suis les instructions ci-dessus !";
+            }
+
             try {
-                const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
+                conversationHistory.push({
+                    role: "user",
+                    content: message
+                });
+
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        inputs: message,
-                        parameters: {
-                            max_length: 200,
-                            temperature: 0.9,
-                            top_p: 0.95,
-                        }
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Tu es un assistant IA intelligent, sympa et utile qui répond en français. Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel."
+                            },
+                            ...conversationHistory
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
                     })
                 });
 
                 if (!response.ok) {
-                    // En cas d'erreur API, utiliser une IA locale simple
-                    return getLocalAIResponse(message);
+                    const errorData = await response.json();
+                    console.error('Erreur API:', errorData);
+                    if (response.status === 401) {
+                        return "❌ Clé API invalide. Vérifie ta clé sur console.groq.com";
+                    }
+                    return "❌ Erreur de connexion à l'IA. Réessaie dans quelques secondes.";
                 }
 
                 const data = await response.json();
-                return data[0]?.generated_text || getLocalAIResponse(message);
-            } catch (error) {
-                console.error('Erreur API:', error);
-                return getLocalAIResponse(message);
-            }
-        }
+                const aiResponse = data.choices[0].message.content;
 
-        function getLocalAIResponse(message) {
-            const lowerMessage = message.toLowerCase();
-            
-            // Réponses basiques intelligentes
-            if (lowerMessage.includes('salut') || lowerMessage.includes('bonjour') || lowerMessage.includes('hello')) {
-                return "Salut ! Comment puis-je t'aider aujourd'hui ? 😊";
+                conversationHistory.push({
+                    role: "assistant",
+                    content: aiResponse
+                });
+
+                // Limiter l'historique à 10 messages pour éviter les tokens excessifs
+                if (conversationHistory.length > 10) {
+                    conversationHistory = conversationHistory.slice(-10);
+                }
+
+                return aiResponse;
+            } catch (error) {
+                console.error('Erreur:', error);
+                return "❌ Erreur de connexion. Vérifie ta connexion internet.";
             }
-            if (lowerMessage.includes('comment') && lowerMessage.includes('vas')) {
-                return "Je vais très bien merci ! Et toi ?";
-            }
-            if (lowerMessage.includes('merci')) {
-                return "De rien ! N'hésite pas si tu as besoin d'autre chose.";
-            }
-            if (lowerMessage.includes('ticket')) {
-                return "Pour générer un ticket, tape simplement '1h' !";
-            }
-            if (lowerMessage.includes('aide') || lowerMessage.includes('help')) {
-                return "Je peux répondre à tes questions et générer des tickets. Tape '1h' pour un ticket ou pose-moi une question !";
-            }
-            if (lowerMessage.includes('qui es-tu') || lowerMessage.includes('qui es tu')) {
-                return "Je suis une IA conversationnelle gratuite intégrée à ce générateur de tickets. Je suis là pour discuter et t'aider !";
-            }
-            if (lowerMessage.includes('pourquoi') || lowerMessage.includes('comment')) {
-                return "C'est une excellente question ! Pourrais-tu être plus précis pour que je puisse mieux t'aider ?";
-            }
-            if (lowerMessage.includes('blague') || lowerMessage.includes('rire')) {
-                const blagues = [
-                    "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau ! 😄",
-                    "Qu'est-ce qu'un crocodile qui surveille la pharmacie ? Un Lacoste garde ! 🐊",
-                    "Comment appelle-t-on un chat tombé dans un pot de peinture ? Un chat-pineau ! 🎨"
-                ];
-                return blagues[Math.floor(Math.random() * blagues.length)];
-            }
-            
-            // Réponse générique intelligente
-            const responses = [
-                "Intéressant ! Peux-tu m'en dire plus ?",
-                "Je comprends ce que tu veux dire. Continue...",
-                "C'est une bonne remarque ! Que penses-tu d'autre à ce sujet ?",
-                "Hmm, je vois. Tu as d'autres questions ?",
-                "Je prends note ! Autre chose à ajouter ?"
-            ];
-            return responses[Math.floor(Math.random() * responses.length)];
         }
 
         async function handleMessage() {
             const message = userInput.value.trim();
             if (!message) return;
 
-            // Désactiver le bouton pendant le traitement
             sendButton.disabled = true;
             userInput.disabled = true;
 
             addMessage('user-message', message);
             userInput.value = '';
 
-            // Cas spécial pour le ticket
             if (message === '1h') {
                 const now = new Date();
                 const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
@@ -472,13 +556,12 @@
                 }, 1000);
 
                 navigator.clipboard.writeText(ticket)
-                    .then(() => console.log('Ticket copié dans le presse-papiers'))
-                    .catch(err => console.error('Erreur de copie :', err));
+                    .then(() => console.log('Ticket copié'))
+                    .catch(err => console.error('Erreur copie:', err));
             } else {
-                // Réponse IA pour les autres messages
                 showTypingIndicator();
                 
-                const aiResponse = await getAIResponse(message);
+                const aiResponse = await getGroqAIResponse(message);
                 
                 hideTypingIndicator();
                 addMessage('bot-message', aiResponse);
