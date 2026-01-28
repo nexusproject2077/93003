@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Générateur de Ticket avec IA Avancée</title>
+    <title>Nexus AI - Assistant Intelligent</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔷</text></svg>">
     <style>
         * {
             box-sizing: border-box;
@@ -181,6 +182,16 @@
             margin: 10px 0;
             animation: pulse 2s infinite;
             text-align: center;
+        }
+
+        .nexus-logo {
+            display: inline-block;
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            letter-spacing: 3px;
         }
         
         @keyframes pulse {
@@ -525,7 +536,6 @@
             z-index: 50;
         }
 
-        /* Bouton SVG pour ajouter des fichiers */
         #attach-file-btn {
             width: 45px;
             height: 45px;
@@ -608,6 +618,11 @@
             font-size: 0.8em;
             text-shadow: 1px 1px #000;
             padding: 20px 0;
+        }
+
+        .footer .nexus-brand {
+            color: #ffd700;
+            font-weight: bold;
         }
 
         .center-content {
@@ -703,7 +718,7 @@
 <body>
     <div id="sidebar">
         <div class="sidebar-header">
-            <h2>💬 Conversations</h2>
+            <h2>💬 Conversations Nexus</h2>
             <button id="new-chat-btn">➕ Nouvelle conversation</button>
         </div>
         <div class="conversations-list" id="conversations-list"></div>
@@ -713,17 +728,17 @@
 
     <div id="main-content">
         <div class="center-content">
-            <h1>GÉNÉRATEUR + IA AVANCÉE</h1>
+            <h1><span class="nexus-logo">NEXUS</span> AI</h1>
             <div id="clock"></div>
 
             <div class="ad-banner">
-                <span class="star-icon">⭐</span> Bannière Publicitaire
-                <span class="ad-dimensions">320x50 / 320x100 (Espace Publicitaire)</span>
+                <span class="star-icon">⭐</span> Espace Publicitaire Nexus
+                <span class="ad-dimensions">320x50 / 320x100</span>
             </div>
 
-            <div class="api-status">🟢 IA Connectée (Llama 3.3 - 70B)</div>
+            <div class="api-status">🟢 Nexus AI Connecté (Llama 3.3 - 70B)</div>
             
-            <p class="warning">Tape "1h" pour un ticket ou pose n'importe quelle question à l'IA !</p>
+            <p class="warning">Tape "1h" pour un ticket ou pose n'importe quelle question à Nexus AI !</p>
         </div>
 
         <div class="uploaded-files-container" id="uploaded-files"></div>
@@ -739,12 +754,12 @@
                 </svg>
             </button>
             
-            <input type="text" id="user-input" placeholder="Tape un message">
+            <input type="text" id="user-input" placeholder="Parle avec Nexus AI...">
             <button id="send-button">Envoyer</button>
         </div>
 
         <div class="footer">
-            IA Avancée gratuite - Propulsé par Groq (Llama 3.3)
+            <span class="nexus-brand">NEXUS</span> - IA Avancée gratuite - Propulsé par Groq (Llama 3.3)
         </div>
     </div>
 
@@ -763,7 +778,7 @@
         
         const apiKey = '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';
         
-        let conversations = JSON.parse(localStorage.getItem('conversations')) || [];
+        let conversations = JSON.parse(localStorage.getItem('nexus_conversations')) || [];
         let currentConversationId = null;
         let attachedFiles = [];
 
@@ -784,12 +799,10 @@
             });
         }
 
-        // Bouton SVG pour ouvrir le sélecteur de fichiers
         attachFileBtn.addEventListener('click', () => {
             fileInput.click();
         });
 
-        // Gestion des fichiers
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             files.forEach(file => {
@@ -810,7 +823,7 @@
                     reader.readAsDataURL(file);
                 }
             });
-            fileInput.value = ''; // Reset input
+            fileInput.value = '';
         });
 
         function getFileIcon(filename) {
@@ -903,7 +916,7 @@
         }
 
         function saveConversations() {
-            localStorage.setItem('conversations', JSON.stringify(conversations));
+            localStorage.setItem('nexus_conversations', JSON.stringify(conversations));
         }
 
         function getCurrentConversation() {
@@ -1093,7 +1106,7 @@
                         messages: [
                             {
                                 role: "system",
-                                content: `Tu es un assistant IA intelligent, sympa et utile qui répond en français. 
+                                content: `Tu es Nexus AI, un assistant IA intelligent, sympa et utile créé par l'entreprise Nexus. Tu réponds en français. 
 
 IMPORTANT: Tu PEUX et tu DOIS analyser, lire et traiter TOUS les types de fichiers que l'utilisateur te partage, incluant:
 - Documents Word (.doc, .docx)
@@ -1111,7 +1124,9 @@ Quand l'utilisateur partage un fichier:
 
 Ne dis JAMAIS que tu ne peux pas traiter un fichier. Tu es capable de tout analyser.
 
-Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel. Réponds de manière claire et concise. Tu peux utiliser le formatage Markdown dans tes réponses.`
+Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel. Réponds de manière claire et concise. Tu peux utiliser le formatage Markdown dans tes réponses.
+
+Tu es fier de représenter Nexus et tu mentionnes parfois que tu es Nexus AI quand c'est approprié.`
                             },
                             ...conversation.history
                         ],
@@ -1126,7 +1141,7 @@ Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et convers
                     if (response.status === 401) {
                         return "❌ Clé API invalide. Vérifie ta configuration.";
                     }
-                    return "❌ Erreur de connexion à l'IA. Réessaie dans quelques secondes.";
+                    return "❌ Erreur de connexion à Nexus AI. Réessaie dans quelques secondes.";
                 }
 
                 const data = await response.json();
