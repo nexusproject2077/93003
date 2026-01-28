@@ -5,65 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Générateur de Ticket</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             background: linear-gradient(135deg, #1c0000, #000);
             color: #fff;
             font-family: 'Courier New', monospace;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
             overflow-x: hidden;
         }
+        
         h1 {
-            font-size: 3.5em;
+            font-size: clamp(2em, 5vw, 3.5em);
             color: #ffd700;
             text-shadow: 3px 3px #ff0000;
-            margin: 20px 0;
+            margin: 10px 0;
             animation: pulse 2s infinite;
         }
+        
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
+        
         #clock {
-            font-size: 1.8em;
+            font-size: clamp(1.2em, 3vw, 1.8em);
             color: #ff4444;
             background: #222;
-            padding: 10px 20px;
+            padding: 8px 15px;
             border: 2px solid #ffd700;
             border-radius: 5px;
             display: inline-block;
-            margin: 10px auto;
+            margin: 5px auto;
             box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
         }
-        /* Styles pour l'espace publicitaire (Bannière) */
+        
         .ad-banner {
-            background: linear-gradient(145deg, #cc0000, #990000); /* Dégradé rouge foncé */
-            border: 2px solid #ff4444; /* Bordure rouge vif */
+            background: linear-gradient(145deg, #cc0000, #990000);
+            border: 2px solid #ff4444;
             color: #fff;
-            padding: 10px;
-            margin: 20px auto;
-            width: 90%; 
-            max-width: 320px; /* Limite la largeur max à 320px */
+            padding: 8px;
+            margin: 10px auto;
+            width: 90%;
+            max-width: 320px;
             border-radius: 8px;
-            box-shadow: 0 0 15px rgba(255, 68, 68, 0.7); /* Ombre rougeoyante */
+            box-shadow: 0 0 15px rgba(255, 68, 68, 0.7);
             text-align: center;
-            font-size: 1.1em;
+            font-size: 1em;
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.3s, box-shadow 0.3s;
         }
+        
         .ad-banner:hover {
             transform: scale(1.02);
             box-shadow: 0 0 25px rgba(255, 68, 68, 1);
         }
+        
         .ad-banner span.star-icon {
-            color: #ffd700; /* Couleur jaune-or pour l'icône/étoile */
+            color: #ffd700;
             font-size: 1.5em;
             margin-right: 8px;
             vertical-align: middle;
         }
+        
         .ad-dimensions {
             display: block;
             font-size: 0.9em;
@@ -71,20 +84,31 @@
             margin-top: 5px;
             color: #ffcccc;
         }
-        /* Fin des styles de la bannière */
-
+        
+        .warning {
+            color: #ff4444;
+            font-size: clamp(1em, 2.5vw, 1.3em);
+            font-weight: bold;
+            margin: 10px auto;
+            text-shadow: 1px 1px #000;
+            padding: 0 10px;
+        }
+        
         #chat-box {
             width: 90%;
             max-width: 600px;
-            height: 450px;
+            flex: 1;
+            min-height: 200px;
+            max-height: calc(100vh - 400px);
             border: 3px solid #ffd700;
             padding: 15px;
             overflow-y: auto;
-            margin: 20px auto;
+            margin: 10px auto;
             background: #111;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
         }
+        
         .user-message {
             text-align: right;
             margin: 8px 12px;
@@ -96,6 +120,7 @@
             margin-left: auto;
             font-size: 1.1em;
         }
+        
         .bot-message {
             text-align: left;
             margin: 8px 12px;
@@ -108,56 +133,109 @@
             font-size: 1.1em;
             white-space: pre-wrap;
         }
+        
         #input-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 20px auto;
+            margin: 10px auto;
             width: 90%;
             max-width: 600px;
-            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
         }
+        
         #user-input {
             padding: 12px;
-            font-size: 1.2em;
-            margin: 5px;
+            font-size: 1.1em;
             border: 2px solid #ffd700;
             background: #222;
             color: #fff;
             border-radius: 5px;
             flex: 1;
-            min-width: 200px;
+            min-width: 150px;
         }
+        
         #send-button {
-            padding: 12px 25px;
-            font-size: 1.2em;
+            padding: 12px 20px;
+            font-size: 1.1em;
             background: #ff0000;
             color: #fff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            margin: 5px;
             transition: all 0.3s;
+            white-space: nowrap;
         }
+        
         #send-button:hover {
             background: #ffd700;
             color: #000;
             transform: scale(1.05);
         }
-        .warning {
-            color: #ff4444;
-            font-size: 1.3em;
-            font-weight: bold;
-            margin: 20px auto;
-            text-shadow: 1px 1px #000;
-        }
+        
         .footer {
-            position: fixed;
-            bottom: 10px;
+            position: relative;
             width: 100%;
             color: #666;
-            font-size: 0.9em;
+            font-size: 0.8em;
             text-shadow: 1px 1px #000;
+            padding: 10px 0;
+            margin-top: auto;
+        }
+        
+        /* Media queries pour mobile */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            h1 {
+                margin: 5px 0;
+            }
+            
+            #chat-box {
+                max-height: calc(100vh - 350px);
+                padding: 10px;
+            }
+            
+            .user-message, .bot-message {
+                font-size: 0.95em;
+                padding: 8px;
+                margin: 6px 8px;
+            }
+            
+            #input-container {
+                gap: 5px;
+                padding: 5px;
+            }
+            
+            #user-input {
+                font-size: 1em;
+                padding: 10px;
+            }
+            
+            #send-button {
+                padding: 10px 15px;
+                font-size: 1em;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #chat-box {
+                max-height: calc(100vh - 320px);
+            }
+            
+            .ad-banner {
+                font-size: 0.9em;
+                padding: 6px;
+            }
+            
+            .warning {
+                font-size: 0.9em;
+            }
         }
     </style>
 </head>
@@ -169,7 +247,7 @@
         <span class="star-icon">⭐</span> Bannière Publicitaire
         <span class="ad-dimensions">320x50 / 320x100 (Espace Publicitaire)</span>
     </div>
-    <p class="warning">Tape "1h" pour un ticket bidon, mais si les contrôleurs te chopent, t’es mort, loser !</p>
+    <p class="warning">Tape "1h" pour un ticket bidon, mais si les contrôleurs te chopent, t'es mort, loser !</p>
 
     <div id="chat-box"></div>
 
@@ -179,7 +257,7 @@
     </div>
 
     <div class="footer">
-        Par un caïd qui se marre pendant que t’essaies de frauder. T’es dans la merde, haha !
+        Par un caïd qui se marre pendant que t'essaies de frauder. T'es dans la merde, haha !
     </div>
 
     <script>
@@ -255,6 +333,13 @@
                 navigator.clipboard.writeText(ticket)
                     .then(() => console.log('Ticket copié dans le presse-papiers'))
                     .catch(err => console.error('Erreur de copie :', err));
+            }
+        });
+
+        // Permettre l'envoi avec la touche Entrée
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendButton.click();
             }
         });
     </script>
