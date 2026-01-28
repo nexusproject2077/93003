@@ -17,7 +17,8 @@
             padding: 0;
             min-height: 100vh;
             display: flex;
-            overflow: hidden;
+            overflow-y: auto; /* Défilement vertical réactivé */
+            overflow-x: hidden; /* Défilement horizontal désactivé */
         }
 
         /* Sidebar pour les conversations */
@@ -28,8 +29,12 @@
             display: flex;
             flex-direction: column;
             transition: transform 0.3s;
-            position: relative;
+            position: fixed; /* Fixé pour rester visible au scroll */
+            left: 0;
+            top: 0;
+            height: 100vh;
             z-index: 100;
+            overflow-y: auto; /* Scroll indépendant pour sidebar */
         }
 
         #sidebar.hidden {
@@ -40,6 +45,9 @@
             padding: 15px;
             background: rgba(255, 215, 0, 0.1);
             border-bottom: 2px solid #ffd700;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .sidebar-header h2 {
@@ -162,11 +170,11 @@
         /* Main content */
         #main-content {
             flex: 1;
+            margin-left: 280px; /* Espace pour la sidebar */
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            padding: 10px;
-            padding-left: 60px;
-            overflow: hidden;
+            min-height: 100vh; /* Pour permettre le scroll */
         }
         
         h1 {
@@ -256,34 +264,42 @@
         }
         
         #chat-box {
-            flex: 1;
             width: 95%;
             max-width: 900px;
+            min-height: 400px; /* Hauteur minimale au lieu de flex */
             border: 3px solid #ffd700;
             padding: 20px;
             overflow-y: auto;
-            margin: 10px auto;
+            margin: 10px auto 20px auto;
             background: linear-gradient(135deg, #0a0a0a, #1a0000);
             border-radius: 15px;
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
         }
 
         /* Scrollbar personnalisée */
-        #chat-box::-webkit-scrollbar {
+        #chat-box::-webkit-scrollbar,
+        #sidebar::-webkit-scrollbar,
+        .conversations-list::-webkit-scrollbar {
             width: 10px;
         }
 
-        #chat-box::-webkit-scrollbar-track {
+        #chat-box::-webkit-scrollbar-track,
+        #sidebar::-webkit-scrollbar-track,
+        .conversations-list::-webkit-scrollbar-track {
             background: #111;
             border-radius: 10px;
         }
 
-        #chat-box::-webkit-scrollbar-thumb {
+        #chat-box::-webkit-scrollbar-thumb,
+        #sidebar::-webkit-scrollbar-thumb,
+        .conversations-list::-webkit-scrollbar-thumb {
             background: #ffd700;
             border-radius: 10px;
         }
 
-        #chat-box::-webkit-scrollbar-thumb:hover {
+        #chat-box::-webkit-scrollbar-thumb:hover,
+        #sidebar::-webkit-scrollbar-thumb:hover,
+        .conversations-list::-webkit-scrollbar-thumb:hover {
             background: #ffaa00;
         }
         
@@ -439,7 +455,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 10px auto;
+            margin: 10px auto 30px auto;
             width: 95%;
             max-width: 900px;
             gap: 10px;
@@ -448,6 +464,9 @@
             border-radius: 15px;
             border: 2px solid #ffd700;
             box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
+            position: sticky;
+            bottom: 10px;
+            z-index: 50;
         }
         
         #user-input {
@@ -501,7 +520,7 @@
             color: #666;
             font-size: 0.8em;
             text-shadow: 1px 1px #000;
-            padding: 10px 0;
+            padding: 20px 0;
         }
 
         .center-content {
@@ -512,13 +531,13 @@
         @media (max-width: 768px) {
             #sidebar {
                 width: 100%;
-                position: fixed;
-                height: 100vh;
                 z-index: 1000;
             }
 
             #main-content {
-                padding-left: 10px;
+                margin-left: 0;
+                padding: 10px;
+                padding-top: 60px;
             }
 
             #toggle-sidebar {
@@ -532,6 +551,7 @@
             
             #chat-box {
                 padding: 10px;
+                min-height: 300px;
             }
             
             .user-message, .bot-message {
@@ -543,6 +563,8 @@
             #input-container {
                 gap: 5px;
                 padding: 10px;
+                position: sticky;
+                bottom: 0;
             }
             
             #user-input {
@@ -695,6 +717,11 @@
             });
 
             renderConversationsList();
+            
+            // Scroll vers le bas après chargement
+            setTimeout(() => {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 100);
         }
 
         function saveConversations() {
@@ -790,11 +817,17 @@
             chatBox.appendChild(msg);
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // Sauvegarder dans la conversation
+            // Sauvegarder dans la conversation (seulement pour les nouveaux messages)
             const conversation = getCurrentConversation();
-            if (conversation) {
+            if (conversation && !isHTML) {
                 conversation.messages.push({
                     type: className.includes('user') ? 'user' : 'bot',
+                    content: message
+                });
+                saveConversations();
+            } else if (conversation && isHTML && !conversation.messages.find(m => m.content === message)) {
+                conversation.messages.push({
+                    type: 'bot',
                     content: message
                 });
                 saveConversations();
