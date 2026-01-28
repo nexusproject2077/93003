@@ -260,51 +260,65 @@
             text-align: center;
         }
 
-        /* Bouton pour upload de fichiers */
-        .file-upload-container {
-            margin: 10px auto;
-            text-align: center;
-        }
-
         #file-input {
             display: none;
         }
 
-        #upload-btn {
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #00cc00, #009900);
-            color: #fff;
-            border: 2px solid #ffd700;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            transition: all 0.3s;
-            display: inline-block;
-            margin: 5px;
-        }
-
-        #upload-btn:hover {
-            background: linear-gradient(135deg, #00ff00, #00cc00);
-            transform: scale(1.05);
-            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.5);
+        .uploaded-files-container {
+            margin: 10px auto;
+            max-width: 600px;
+            min-height: 40px;
         }
 
         .uploaded-file {
-            display: inline-block;
-            background: rgba(255, 215, 0, 0.2);
-            padding: 5px 10px;
-            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(204, 0, 0, 0.1));
+            padding: 8px 12px;
+            border-radius: 8px;
             margin: 5px;
-            color: #ffd700;
+            border: 2px solid #ffd700;
             font-size: 0.9em;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .uploaded-file .file-icon {
+            margin-right: 8px;
+            font-size: 1.2em;
+        }
+
+        .uploaded-file .file-name {
+            color: #ffd700;
+            font-weight: bold;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .uploaded-file .remove-file {
-            margin-left: 10px;
+            margin-left: 12px;
             color: #ff0000;
             cursor: pointer;
             font-weight: bold;
+            font-size: 1.2em;
+            transition: all 0.2s;
+        }
+
+        .uploaded-file .remove-file:hover {
+            color: #ff4444;
+            transform: scale(1.2);
         }
         
         #chat-box {
@@ -510,6 +524,37 @@
             bottom: 10px;
             z-index: 50;
         }
+
+        /* Bouton SVG pour ajouter des fichiers */
+        #attach-file-btn {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #00cc00, #009900);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        #attach-file-btn:hover {
+            background: linear-gradient(135deg, #00ff00, #00cc00);
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.5);
+        }
+
+        #attach-file-btn svg {
+            width: 24px;
+            height: 24px;
+            transition: all 0.3s;
+        }
+
+        #attach-file-btn:hover svg {
+            transform: rotate(-90deg);
+        }
         
         #user-input {
             padding: 12px 15px;
@@ -617,6 +662,16 @@
                 padding: 10px 15px;
                 font-size: 1em;
             }
+
+            #attach-file-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            #attach-file-btn svg {
+                width: 20px;
+                height: 20px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -631,6 +686,10 @@
 
             .conversation-title {
                 font-size: 0.85em;
+            }
+
+            .uploaded-file .file-name {
+                max-width: 120px;
             }
         }
 
@@ -664,18 +723,22 @@
 
             <div class="api-status">🟢 IA Connectée (Llama 3.3 - 70B)</div>
             
-            <div class="file-upload-container">
-                <input type="file" id="file-input" accept=".txt,.pdf,.doc,.docx,.jpg,.png,.jpeg" multiple>
-                <label for="file-input" id="upload-btn">📎 Joindre des fichiers</label>
-                <div id="uploaded-files"></div>
-            </div>
-            
             <p class="warning">Tape "1h" pour un ticket ou pose n'importe quelle question à l'IA !</p>
         </div>
+
+        <div class="uploaded-files-container" id="uploaded-files"></div>
 
         <div id="chat-box"></div>
 
         <div id="input-container">
+            <input type="file" id="file-input" accept=".txt,.pdf,.doc,.docx,.jpg,.png,.jpeg,.gif,.xlsx,.xls" multiple>
+            
+            <button id="attach-file-btn" title="Joindre des fichiers">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 5V19M5 12H19" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            
             <input type="text" id="user-input" placeholder="Tape un message">
             <button id="send-button">Envoyer</button>
         </div>
@@ -695,6 +758,7 @@
         const sidebar = document.getElementById('sidebar');
         const toggleSidebarBtn = document.getElementById('toggle-sidebar');
         const fileInput = document.getElementById('file-input');
+        const attachFileBtn = document.getElementById('attach-file-btn');
         const uploadedFilesDiv = document.getElementById('uploaded-files');
         
         const apiKey = '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';
@@ -720,6 +784,11 @@
             });
         }
 
+        // Bouton SVG pour ouvrir le sélecteur de fichiers
+        attachFileBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
         // Gestion des fichiers
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
@@ -729,6 +798,7 @@
                     attachedFiles.push({
                         name: file.name,
                         type: file.type,
+                        size: file.size,
                         content: event.target.result
                     });
                     renderUploadedFiles();
@@ -740,7 +810,32 @@
                     reader.readAsDataURL(file);
                 }
             });
+            fileInput.value = ''; // Reset input
         });
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'txt': '📄',
+                'pdf': '📕',
+                'doc': '📘',
+                'docx': '📘',
+                'jpg': '🖼️',
+                'jpeg': '🖼️',
+                'png': '🖼️',
+                'gif': '🖼️',
+                'xlsx': '📊',
+                'xls': '📊',
+                'csv': '📊'
+            };
+            return icons[ext] || '📎';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
 
         function renderUploadedFiles() {
             uploadedFilesDiv.innerHTML = '';
@@ -748,7 +843,9 @@
                 const fileEl = document.createElement('div');
                 fileEl.className = 'uploaded-file';
                 fileEl.innerHTML = `
-                    📄 ${file.name}
+                    <span class="file-icon">${getFileIcon(file.name)}</span>
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                    <span style="color: #999; font-size: 0.85em; margin-left: 8px;">${formatFileSize(file.size)}</span>
                     <span class="remove-file" onclick="removeFile(${index})">✕</span>
                 `;
                 uploadedFilesDiv.appendChild(fileEl);
@@ -967,12 +1064,11 @@
             try {
                 const conversation = getCurrentConversation();
                 
-                // Ajouter les fichiers attachés au message si présents
                 let fullMessage = message;
                 if (attachedFiles.length > 0) {
                     fullMessage += '\n\n[Fichiers joints:]\n';
                     attachedFiles.forEach(file => {
-                        fullMessage += `\nFichier: ${file.name}\n`;
+                        fullMessage += `\nFichier: ${file.name} (${formatFileSize(file.size)})\n`;
                         if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
                             fullMessage += `Contenu:\n${file.content}\n`;
                         } else {
@@ -1047,7 +1143,6 @@ Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et convers
 
                 saveConversations();
                 
-                // Vider les fichiers attachés après envoi
                 attachedFiles = [];
                 renderUploadedFiles();
                 
