@@ -142,8 +142,73 @@
             max-width: 80%;
             margin-right: auto;
             font-size: 1em;
-            white-space: pre-wrap;
             word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        /* Formatage Markdown dans les messages */
+        .bot-message strong {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .bot-message em {
+            color: #ffaa00;
+            font-style: italic;
+        }
+
+        .bot-message ul, .bot-message ol {
+            text-align: left;
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .bot-message li {
+            margin: 5px 0;
+        }
+
+        .bot-message code {
+            background: #222;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+
+        .bot-message pre {
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 3px solid #ffd700;
+            margin: 10px 0;
+        }
+
+        .bot-message pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .bot-message h1, .bot-message h2, .bot-message h3 {
+            color: #ffd700;
+            margin: 10px 0 5px 0;
+        }
+
+        .bot-message blockquote {
+            border-left: 3px solid #ffd700;
+            padding-left: 10px;
+            margin: 10px 0;
+            color: #ccc;
+            font-style: italic;
+        }
+
+        .bot-message a {
+            color: #00ccff;
+            text-decoration: underline;
+        }
+
+        .bot-message p {
+            margin: 8px 0;
         }
         
         .typing-indicator {
@@ -333,10 +398,62 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        function addMessage(className, message) {
+        // Fonction pour convertir le Markdown en HTML
+        function markdownToHTML(text) {
+            // Blocs de code avec ```
+            text = text.replace(/```(\w+)?\n([\s\S]+?)```/g, '<pre><code>$2</code></pre>');
+            
+            // Code inline avec `
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Gras **texte**
+            text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            
+            // Italique *texte*
+            text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            
+            // Titres
+            text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+            
+            // Listes numérotées
+            text = text.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
+            
+            // Listes à puces
+            text = text.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+            
+            // Citations
+            text = text.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+            
+            // Liens [texte](url)
+            text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            
+            // Sauts de ligne doubles en paragraphes
+            text = text.split('\n\n').map(para => {
+                if (!para.trim().startsWith('<')) {
+                    return '<p>' + para + '</p>';
+                }
+                return para;
+            }).join('\n');
+            
+            // Sauts de ligne simples
+            text = text.replace(/\n/g, '<br>');
+            
+            return text;
+        }
+
+        function addMessage(className, message, isHTML = false) {
             const msg = document.createElement('div');
             msg.className = className;
-            msg.textContent = message;
+            
+            if (isHTML) {
+                msg.innerHTML = message;
+            } else {
+                msg.textContent = message;
+            }
+            
             chatBox.appendChild(msg);
             chatBox.scrollTop = chatBox.scrollHeight;
             return msg;
@@ -407,7 +524,7 @@
                         messages: [
                             {
                                 role: "system",
-                                content: "Tu es un assistant IA intelligent, sympa et utile qui répond en français. Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel. Réponds de manière claire et concise."
+                                content: "Tu es un assistant IA intelligent, sympa et utile qui répond en français. Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel. Réponds de manière claire et concise. Tu peux utiliser le formatage Markdown dans tes réponses."
                             },
                             ...conversationHistory
                         ],
@@ -477,7 +594,11 @@
                 const aiResponse = await getGroqAIResponse(message);
                 
                 hideTypingIndicator();
-                addMessage('bot-message', aiResponse);
+                
+                // Convertir le Markdown en HTML
+                const formattedResponse = markdownToHTML(aiResponse);
+                addMessage('bot-message', formattedResponse, true);
+                
                 sendButton.disabled = false;
                 userInput.disabled = false;
                 userInput.focus();
