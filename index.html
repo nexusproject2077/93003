@@ -96,54 +96,12 @@
 
         .api-status {
             font-size: 0.9em;
-            color: #ffd700;
+            color: #00ff00;
             margin: 5px 0;
             padding: 5px;
             background: rgba(0, 0, 0, 0.5);
             border-radius: 5px;
             display: inline-block;
-        }
-
-        .api-key-setup {
-            background: rgba(255, 215, 0, 0.1);
-            border: 2px solid #ffd700;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 10px auto;
-            max-width: 600px;
-            width: 90%;
-        }
-
-        .api-key-setup input {
-            width: 70%;
-            padding: 10px;
-            font-size: 1em;
-            border: 2px solid #ffd700;
-            background: #222;
-            color: #fff;
-            border-radius: 5px;
-            margin: 5px;
-        }
-
-        .api-key-setup button {
-            padding: 10px 20px;
-            font-size: 1em;
-            background: #00cc00;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .api-key-setup button:hover {
-            background: #00ff00;
-            transform: scale(1.05);
-        }
-
-        .api-key-setup a {
-            color: #ffd700;
-            text-decoration: underline;
         }
         
         #chat-box {
@@ -151,7 +109,7 @@
             max-width: 600px;
             flex: 1;
             min-height: 200px;
-            max-height: calc(100vh - 450px);
+            max-height: calc(100vh - 400px);
             border: 3px solid #ffd700;
             padding: 15px;
             overflow-y: auto;
@@ -287,7 +245,7 @@
             }
             
             #chat-box {
-                max-height: calc(100vh - 400px);
+                max-height: calc(100vh - 380px);
                 padding: 10px;
             }
             
@@ -311,21 +269,11 @@
                 padding: 10px 15px;
                 font-size: 1em;
             }
-
-            .api-key-setup input {
-                width: 100%;
-                margin: 5px 0;
-            }
-
-            .api-key-setup button {
-                width: 100%;
-                margin: 5px 0;
-            }
         }
         
         @media (max-width: 480px) {
             #chat-box {
-                max-height: calc(100vh - 380px);
+                max-height: calc(100vh - 360px);
             }
             
             .ad-banner {
@@ -348,17 +296,7 @@
         <span class="ad-dimensions">320x50 / 320x100 (Espace Publicitaire)</span>
     </div>
 
-    <div id="api-setup" class="api-key-setup">
-        <p style="color: #ffd700; font-weight: bold;">🔑 Configuration API Groq (Gratuit)</p>
-        <p style="font-size: 0.9em;">1. Crée un compte sur <a href="https://console.groq.com" target="_blank">console.groq.com</a></p>
-        <p style="font-size: 0.9em;">2. Génère une clé API gratuite</p>
-        <p style="font-size: 0.9em;">3. Colle-la ci-dessous :</p>
-        <input type="text" id="api-key-input" placeholder="Colle ta clé API Groq ici">
-        <button onclick="saveApiKey()">Sauvegarder</button>
-        <p style="font-size: 0.8em; color: #ff4444; margin-top: 10px;">Ta clé est stockée localement dans ton navigateur 🔒</p>
-    </div>
-
-    <div class="api-status" id="api-status">🔴 API non configurée</div>
+    <div class="api-status">🟢 IA Connectée (Llama 3.3 - 70B)</div>
     
     <p class="warning">Tape "1h" pour un ticket ou pose n'importe quelle question à l'IA !</p>
 
@@ -378,33 +316,12 @@
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
         const clock = document.getElementById('clock');
-        const apiStatus = document.getElementById('api-status');
-        const apiSetup = document.getElementById('api-setup');
         
         let conversationHistory = [];
-        let apiKey = localStorage.getItem('groq_api_key');
+        const apiKey = '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';
 
-        // Vérifier si l'API est configurée
-        if (apiKey) {
-            apiSetup.style.display = 'none';
-            apiStatus.textContent = '🟢 IA connectée';
-            apiStatus.style.color = '#00ff00';
-            addMessage('bot-message', "Salut ! Je suis une IA avancée comme ChatGPT. Pose-moi n'importe quelle question ou tape '1h' pour générer un ticket !");
-        }
-
-        function saveApiKey() {
-            const key = document.getElementById('api-key-input').value.trim();
-            if (key) {
-                localStorage.setItem('groq_api_key', key);
-                apiKey = key;
-                apiSetup.style.display = 'none';
-                apiStatus.textContent = '🟢 IA connectée';
-                apiStatus.style.color = '#00ff00';
-                addMessage('bot-message', "Parfait ! L'IA est maintenant connectée. Pose-moi n'importe quelle question !");
-            } else {
-                alert('Merci d\'entrer une clé API valide');
-            }
-        }
+        // Message de bienvenue
+        addMessage('bot-message', "Salut ! Je suis une IA avancée comme ChatGPT. Pose-moi n'importe quelle question ou tape '1h' pour générer un ticket !");
 
         function updateClock() {
             const now = new Date();
@@ -473,10 +390,6 @@
         }
 
         async function getGroqAIResponse(message) {
-            if (!apiKey) {
-                return "⚠️ Merci de configurer ton API Groq pour utiliser l'IA avancée. Suis les instructions ci-dessus !";
-            }
-
             try {
                 conversationHistory.push({
                     role: "user",
@@ -494,12 +407,12 @@
                         messages: [
                             {
                                 role: "system",
-                                content: "Tu es un assistant IA intelligent, sympa et utile qui répond en français. Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel."
+                                content: "Tu es un assistant IA intelligent, sympa et utile qui répond en français. Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel. Réponds de manière claire et concise."
                             },
                             ...conversationHistory
                         ],
                         temperature: 0.7,
-                        max_tokens: 1000
+                        max_tokens: 2000
                     })
                 });
 
@@ -507,7 +420,7 @@
                     const errorData = await response.json();
                     console.error('Erreur API:', errorData);
                     if (response.status === 401) {
-                        return "❌ Clé API invalide. Vérifie ta clé sur console.groq.com";
+                        return "❌ Clé API invalide. Vérifie ta configuration.";
                     }
                     return "❌ Erreur de connexion à l'IA. Réessaie dans quelques secondes.";
                 }
@@ -520,9 +433,9 @@
                     content: aiResponse
                 });
 
-                // Limiter l'historique à 10 messages pour éviter les tokens excessifs
-                if (conversationHistory.length > 10) {
-                    conversationHistory = conversationHistory.slice(-10);
+                // Limiter l'historique à 20 messages pour éviter les tokens excessifs
+                if (conversationHistory.length > 20) {
+                    conversationHistory = conversationHistory.slice(-20);
                 }
 
                 return aiResponse;
