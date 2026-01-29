@@ -3,7 +3,7 @@
 }
 
 body {
-    background: linear-gradient(135deg, #1c0000, #000);
+    background: linear-gradient(135deg, #0a0a1a, #000000);
     color: #fff;
     font-family: 'Courier New', monospace;
     margin: 0;
@@ -17,8 +17,8 @@ body {
 /* ===== SIDEBAR ===== */
 #sidebar {
     width: 280px;
-    background: linear-gradient(180deg, #1a0000, #000);
-    border-right: 2px solid #ffd700;
+    background: linear-gradient(180deg, #0a0a1a, #000000);
+    border-right: 2px solid #00d9ff;
     display: flex;
     flex-direction: column;
     transition: transform 0.3s;
@@ -36,8 +36,8 @@ body {
 
 .sidebar-header {
     padding: 15px;
-    background: rgba(255, 215, 0, 0.1);
-    border-bottom: 2px solid #ffd700;
+    background: rgba(0, 217, 255, 0.1);
+    border-bottom: 2px solid #00d9ff;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -46,16 +46,16 @@ body {
 .sidebar-header h2 {
     margin: 0 0 10px 0;
     font-size: 1.3em;
-    color: #ffd700;
-    text-shadow: 2px 2px #ff0000;
+    color: #00d9ff;
+    text-shadow: 2px 2px #0088cc;
 }
 
 #new-chat-btn {
     width: 100%;
     padding: 10px;
-    background: #ff0000;
-    color: #fff;
-    border: 2px solid #ffd700;
+    background: linear-gradient(135deg, #00d9ff, #0088cc);
+    color: #000;
+    border: 2px solid #00d9ff;
     border-radius: 5px;
     cursor: pointer;
     font-size: 1em;
@@ -64,9 +64,9 @@ body {
 }
 
 #new-chat-btn:hover {
-    background: #ffd700;
-    color: #000;
+    background: linear-gradient(135deg, #00ffff, #00d9ff);
     transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
 }
 
 .conversations-list {
@@ -78,8 +78,8 @@ body {
 .conversation-item {
     padding: 12px;
     margin: 5px 0;
-    background: rgba(204, 0, 0, 0.3);
-    border: 1px solid #ff4444;
+    background: rgba(0, 136, 204, 0.2);
+    border: 1px solid #0088cc;
     border-radius: 5px;
     cursor: pointer;
     transition: all 0.3s;
@@ -87,20 +87,20 @@ body {
 }
 
 .conversation-item:hover {
-    background: rgba(204, 0, 0, 0.5);
-    border-color: #ffd700;
+    background: rgba(0, 136, 204, 0.4);
+    border-color: #00d9ff;
     transform: translateX(5px);
 }
 
 .conversation-item.active {
-    background: rgba(255, 215, 0, 0.2);
-    border-color: #ffd700;
+    background: rgba(0, 217, 255, 0.3);
+    border-color: #00d9ff;
     border-width: 2px;
 }
 
 .conversation-title {
     font-weight: bold;
-    color: #ffd700;
+    color: #00d9ff;
     font-size: 0.95em;
     margin-bottom: 3px;
     white-space: nowrap;
@@ -110,7 +110,7 @@ body {
 
 .conversation-date {
     font-size: 0.75em;
-    color: #999;
+    color: #888;
 }
 
 .delete-conv-btn {
@@ -118,7 +118,7 @@ body {
     right: 8px;
     top: 50%;
     transform: translateY(-50%);
-    background: #ff0000;
+    background: #ff4444;
     color: #fff;
     border: none;
     width: 25px;
@@ -135,7 +135,7 @@ body {
 }
 
 .delete-conv-btn:hover {
-    background: #ff4444;
+    background: #ff6666;
     transform: translateY(-50%) scale(1.1);
 }
 
@@ -147,32 +147,28 @@ body {
     z-index: 200;
     width: 45px;
     height: 45px;
-    background: linear-gradient(135deg, #ff0000, #cc0000);
-    color: #fff;
-    border: 2px solid #ffd700;
+    background: linear-gradient(135deg, #00d9ff, #0088cc);
+    color: #000;
+    border: 2px solid #00d9ff;
     border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s;
-    box-shadow: 0 3px 10px rgba(255, 0, 0, 0.5);
+    box-shadow: 0 3px 10px rgba(0, 217, 255, 0.3);
 }
 
 #toggle-sidebar:hover {
-    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    background: linear-gradient(135deg, #00ffff, #00d9ff);
     transform: scale(1.1);
-    box-shadow: 0 5px 20px rgba(255, 215, 0, 0.7);
+    box-shadow: 0 5px 20px rgba(0, 217, 255, 0.5);
 }
 
 #toggle-sidebar svg {
     width: 24px;
     height: 24px;
     transition: all 0.3s;
-}
-
-#toggle-sidebar:hover svg {
-    color: #000;
 }
 
 #sidebar.hidden ~ #toggle-sidebar svg {
@@ -196,8 +192,8 @@ body {
 
 h1 {
     font-size: clamp(2em, 5vw, 3.5em);
-    color: #ffd700;
-    text-shadow: 3px 3px #ff0000;
+    color: #00d9ff;
+    text-shadow: 0 0 20px rgba(0, 217, 255, 0.8), 3px 3px #0088cc;
     margin: 10px 0;
     animation: pulse 2s infinite;
     text-align: center;
@@ -205,7 +201,7 @@ h1 {
 
 .nexus-logo {
     display: inline-block;
-    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    background: linear-gradient(135deg, #00d9ff, #0088cc);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -214,34 +210,34 @@ h1 {
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% { transform: scale(1); text-shadow: 0 0 20px rgba(0, 217, 255, 0.8), 3px 3px #0088cc; }
+    50% { transform: scale(1.05); text-shadow: 0 0 30px rgba(0, 217, 255, 1), 3px 3px #0088cc; }
+    100% { transform: scale(1); text-shadow: 0 0 20px rgba(0, 217, 255, 0.8), 3px 3px #0088cc; }
 }
 
 #clock {
     font-size: clamp(1.2em, 3vw, 1.8em);
-    color: #ff4444;
-    background: #222;
+    color: #00d9ff;
+    background: #0a0a1a;
     padding: 8px 15px;
-    border: 2px solid #ffd700;
+    border: 2px solid #00d9ff;
     border-radius: 5px;
     display: inline-block;
     margin: 5px auto;
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
     text-align: center;
 }
 
 .ad-banner {
-    background: linear-gradient(145deg, #cc0000, #990000);
-    border: 2px solid #ff4444;
+    background: linear-gradient(145deg, #0088cc, #005580);
+    border: 2px solid #00d9ff;
     color: #fff;
     padding: 8px;
     margin: 10px auto;
     width: 90%;
     max-width: 320px;
     border-radius: 8px;
-    box-shadow: 0 0 15px rgba(255, 68, 68, 0.7);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
     text-align: center;
     font-size: 1em;
     font-weight: bold;
@@ -251,11 +247,11 @@ h1 {
 
 .ad-banner:hover {
     transform: scale(1.02);
-    box-shadow: 0 0 25px rgba(255, 68, 68, 1);
+    box-shadow: 0 0 25px rgba(0, 217, 255, 0.6);
 }
 
 .ad-banner span.star-icon {
-    color: #ffd700;
+    color: #00d9ff;
     font-size: 1.5em;
     margin-right: 8px;
     vertical-align: middle;
@@ -266,22 +262,22 @@ h1 {
     font-size: 0.9em;
     font-weight: normal;
     margin-top: 5px;
-    color: #ffcccc;
+    color: #99e6ff;
 }
 
 .warning {
-    color: #ff4444;
+    color: #00d9ff;
     font-size: clamp(1em, 2.5vw, 1.3em);
     font-weight: bold;
     margin: 10px auto;
-    text-shadow: 1px 1px #000;
+    text-shadow: 0 0 10px rgba(0, 217, 255, 0.6);
     padding: 0 10px;
     text-align: center;
 }
 
 .api-status {
     font-size: 0.9em;
-    color: #00ff00;
+    color: #00ff88;
     margin: 5px 0;
     padding: 5px;
     background: rgba(0, 0, 0, 0.5);
@@ -304,11 +300,11 @@ h1 {
 .uploaded-file {
     display: inline-flex;
     align-items: center;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(204, 0, 0, 0.1));
+    background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(0, 136, 204, 0.1));
     padding: 8px 12px;
     border-radius: 8px;
     margin: 5px;
-    border: 2px solid #ffd700;
+    border: 2px solid #00d9ff;
     font-size: 0.9em;
     animation: slideIn 0.3s;
 }
@@ -330,7 +326,7 @@ h1 {
 }
 
 .uploaded-file .file-name {
-    color: #ffd700;
+    color: #00d9ff;
     font-weight: bold;
     max-width: 200px;
     overflow: hidden;
@@ -340,7 +336,7 @@ h1 {
 
 .uploaded-file .remove-file {
     margin-left: 12px;
-    color: #ff0000;
+    color: #ff4444;
     cursor: pointer;
     font-weight: bold;
     font-size: 1.2em;
@@ -348,7 +344,7 @@ h1 {
 }
 
 .uploaded-file .remove-file:hover {
-    color: #ff4444;
+    color: #ff6666;
     transform: scale(1.2);
 }
 
@@ -357,13 +353,13 @@ h1 {
     width: 95%;
     max-width: 900px;
     min-height: 400px;
-    border: 3px solid #ffd700;
+    border: 3px solid #00d9ff;
     padding: 20px;
     overflow-y: auto;
     margin: 10px auto 20px auto;
-    background: linear-gradient(135deg, #0a0a0a, #1a0000);
+    background: linear-gradient(135deg, #0a0a1a, #001a2e);
     border-radius: 15px;
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
 #chat-box::-webkit-scrollbar,
@@ -375,21 +371,21 @@ h1 {
 #chat-box::-webkit-scrollbar-track,
 #sidebar::-webkit-scrollbar-track,
 .conversations-list::-webkit-scrollbar-track {
-    background: #111;
+    background: #0a0a1a;
     border-radius: 10px;
 }
 
 #chat-box::-webkit-scrollbar-thumb,
 #sidebar::-webkit-scrollbar-thumb,
 .conversations-list::-webkit-scrollbar-thumb {
-    background: #ffd700;
+    background: #00d9ff;
     border-radius: 10px;
 }
 
 #chat-box::-webkit-scrollbar-thumb:hover,
 #sidebar::-webkit-scrollbar-thumb:hover,
 .conversations-list::-webkit-scrollbar-thumb:hover {
-    background: #ffaa00;
+    background: #00ffff;
 }
 
 /* ===== MESSAGES ===== */
@@ -397,14 +393,14 @@ h1 {
     text-align: right;
     margin: 12px 0;
     padding: 12px 15px;
-    background: linear-gradient(135deg, #cc0000, #990000);
+    background: linear-gradient(135deg, #0088cc, #005580);
     border-radius: 15px 15px 5px 15px;
     color: #fff;
     max-width: 75%;
     margin-left: auto;
     font-size: 1em;
     word-wrap: break-word;
-    box-shadow: 0 3px 10px rgba(204, 0, 0, 0.5);
+    box-shadow: 0 3px 10px rgba(0, 136, 204, 0.5);
     animation: slideInRight 0.3s;
 }
 
@@ -423,15 +419,16 @@ h1 {
     text-align: left;
     margin: 12px 0;
     padding: 12px 15px;
-    background: linear-gradient(135deg, #004400, #002200);
+    background: linear-gradient(135deg, #001a2e, #002244);
     border-radius: 15px 15px 15px 5px;
+    border-left: 3px solid #00d9ff;
     color: #fff;
     max-width: 75%;
     margin-right: auto;
     font-size: 1em;
     word-wrap: break-word;
     line-height: 1.6;
-    box-shadow: 0 3px 10px rgba(0, 68, 0, 0.5);
+    box-shadow: 0 3px 10px rgba(0, 217, 255, 0.3);
     animation: slideInLeft 0.3s;
 }
 
@@ -446,11 +443,10 @@ h1 {
     }
 }
 
-/* Cursor clignotant pour l'effet de frappe */
 .bot-message.typing::after {
     content: '▋';
     animation: blink-cursor 0.7s infinite;
-    color: #ffd700;
+    color: #00d9ff;
 }
 
 @keyframes blink-cursor {
@@ -459,12 +455,12 @@ h1 {
 }
 
 .bot-message strong {
-    color: #ffd700;
+    color: #00d9ff;
     font-weight: bold;
 }
 
 .bot-message em {
-    color: #ffaa00;
+    color: #66ccff;
     font-style: italic;
 }
 
@@ -479,43 +475,49 @@ h1 {
 }
 
 .bot-message code {
-    background: #222;
+    background: #0a0a1a;
     padding: 2px 6px;
     border-radius: 3px;
-    color: #00ff00;
+    color: #00ff88;
     font-family: 'Courier New', monospace;
+    border: 1px solid #00d9ff;
 }
 
 .bot-message pre {
-    background: #222;
+    background: #0a0a1a;
     padding: 10px;
     border-radius: 5px;
     overflow-x: auto;
-    border-left: 3px solid #ffd700;
+    border-left: 3px solid #00d9ff;
     margin: 10px 0;
 }
 
 .bot-message pre code {
     background: none;
     padding: 0;
+    border: none;
 }
 
 .bot-message h1, .bot-message h2, .bot-message h3 {
-    color: #ffd700;
+    color: #00d9ff;
     margin: 10px 0 5px 0;
 }
 
 .bot-message blockquote {
-    border-left: 3px solid #ffd700;
+    border-left: 3px solid #00d9ff;
     padding-left: 10px;
     margin: 10px 0;
-    color: #ccc;
+    color: #99e6ff;
     font-style: italic;
 }
 
 .bot-message a {
-    color: #00ccff;
+    color: #00d9ff;
     text-decoration: underline;
+}
+
+.bot-message a:hover {
+    color: #00ffff;
 }
 
 .bot-message p {
@@ -526,8 +528,9 @@ h1 {
     text-align: left;
     margin: 12px 0;
     padding: 12px 15px;
-    background: linear-gradient(135deg, #004400, #002200);
+    background: linear-gradient(135deg, #001a2e, #002244);
     border-radius: 15px 15px 15px 5px;
+    border-left: 3px solid #00d9ff;
     color: #fff;
     max-width: 70%;
     margin-right: auto;
@@ -562,10 +565,10 @@ h1 {
     max-width: 900px;
     gap: 10px;
     padding: 15px;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(204, 0, 0, 0.1));
+    background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(0, 136, 204, 0.1));
     border-radius: 15px;
-    border: 2px solid #ffd700;
-    box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
+    border: 2px solid #00d9ff;
+    box-shadow: 0 5px 20px rgba(0, 217, 255, 0.2);
     position: sticky;
     bottom: 10px;
     z-index: 50;
@@ -574,8 +577,8 @@ h1 {
 #home-btn {
     width: 45px;
     height: 45px;
-    background: linear-gradient(135deg, #ffd700, #ffaa00);
-    border: 2px solid #ff0000;
+    background: linear-gradient(135deg, #00d9ff, #0088cc);
+    border: 2px solid #00d9ff;
     border-radius: 10px;
     cursor: pointer;
     display: flex;
@@ -586,15 +589,19 @@ h1 {
 }
 
 #home-btn:hover {
-    background: linear-gradient(135deg, #ffff00, #ffd700);
+    background: linear-gradient(135deg, #00ffff, #00d9ff);
     transform: scale(1.1);
-    box-shadow: 0 5px 20px rgba(255, 215, 0, 0.7);
+    box-shadow: 0 5px 20px rgba(0, 217, 255, 0.5);
 }
 
 #home-btn svg {
     width: 26px;
     height: 26px;
     transition: all 0.3s;
+}
+
+#home-btn svg path {
+    stroke: #000;
 }
 
 #home-btn:hover svg {
@@ -604,8 +611,8 @@ h1 {
 #attach-file-btn {
     width: 45px;
     height: 45px;
-    background: linear-gradient(135deg, #00cc00, #009900);
-    border: 2px solid #ffd700;
+    background: linear-gradient(135deg, #00ff88, #00cc66);
+    border: 2px solid #00d9ff;
     border-radius: 10px;
     cursor: pointer;
     display: flex;
@@ -616,9 +623,9 @@ h1 {
 }
 
 #attach-file-btn:hover {
-    background: linear-gradient(135deg, #00ff00, #00cc00);
+    background: linear-gradient(135deg, #00ffaa, #00ff88);
     transform: scale(1.1) rotate(90deg);
-    box-shadow: 0 5px 20px rgba(0, 255, 0, 0.5);
+    box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
 }
 
 #attach-file-btn svg {
@@ -634,8 +641,8 @@ h1 {
 #user-input {
     padding: 12px 15px;
     font-size: 1.1em;
-    border: 2px solid #ffd700;
-    background: #1a1a1a;
+    border: 2px solid #00d9ff;
+    background: #0a0a1a;
     color: #fff;
     border-radius: 10px;
     flex: 1;
@@ -645,16 +652,20 @@ h1 {
 
 #user-input:focus {
     outline: none;
-    border-color: #ffaa00;
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    border-color: #00ffff;
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+}
+
+#user-input::placeholder {
+    color: #666;
 }
 
 #send-button {
     padding: 12px 25px;
     font-size: 1.1em;
-    background: linear-gradient(135deg, #ff0000, #cc0000);
-    color: #fff;
-    border: 2px solid #ffd700;
+    background: linear-gradient(135deg, #00d9ff, #0088cc);
+    color: #000;
+    border: 2px solid #00d9ff;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s;
@@ -663,17 +674,18 @@ h1 {
 }
 
 #send-button:hover {
-    background: linear-gradient(135deg, #ffd700, #ffaa00);
-    color: #000;
+    background: linear-gradient(135deg, #00ffff, #00d9ff);
     transform: scale(1.05);
-    box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+    box-shadow: 0 5px 20px rgba(0, 217, 255, 0.5);
 }
 
 #send-button:disabled {
-    background: #666;
+    background: #333;
+    color: #666;
     cursor: not-allowed;
     transform: scale(1);
     box-shadow: none;
+    border-color: #444;
 }
 
 /* ===== FOOTER ===== */
@@ -687,7 +699,7 @@ h1 {
 }
 
 .footer .nexus-brand {
-    color: #ffd700;
+    color: #00d9ff;
     font-weight: bold;
 }
 
