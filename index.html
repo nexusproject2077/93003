@@ -536,6 +536,37 @@
             z-index: 50;
         }
 
+        /* Bouton SVG pour la maison */
+        #home-btn {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            border: 2px solid #ff0000;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        #home-btn:hover {
+            background: linear-gradient(135deg, #ffff00, #ffd700);
+            transform: scale(1.1);
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.7);
+        }
+
+        #home-btn svg {
+            width: 26px;
+            height: 26px;
+            transition: all 0.3s;
+        }
+
+        #home-btn:hover svg {
+            transform: scale(1.1);
+        }
+
         #attach-file-btn {
             width: 45px;
             height: 45px;
@@ -678,7 +709,7 @@
                 font-size: 1em;
             }
 
-            #attach-file-btn {
+            #attach-file-btn, #home-btn {
                 width: 40px;
                 height: 40px;
             }
@@ -686,6 +717,11 @@
             #attach-file-btn svg {
                 width: 20px;
                 height: 20px;
+            }
+
+            #home-btn svg {
+                width: 22px;
+                height: 22px;
             }
         }
         
@@ -748,6 +784,13 @@
         <div id="input-container">
             <input type="file" id="file-input" accept=".txt,.pdf,.doc,.docx,.jpg,.png,.jpeg,.gif,.xlsx,.xls" multiple>
             
+            <!-- Bouton Maison SVG -->
+            <a href="https://nexusproject2077.github.io/nexus-hub/index.html" id="home-btn" title="Retour à l'accueil Nexus">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 12L5 10M5 10L12 3L19 10M5 10V20C5 20.5523 5.44772 21 6 21H9M19 10L21 12M19 10V20C19 20.5523 18.5523 21 18 21H15M9 21C9.55228 21 10 20.5523 10 20V16C10 15.4477 10.4477 15 11 15H13C13.5523 15 14 15.4477 14 16V20C14 20.5523 14.4477 21 15 21M9 21H15" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+
             <button id="attach-file-btn" title="Joindre des fichiers">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 5V19M5 12H19" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
