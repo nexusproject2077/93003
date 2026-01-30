@@ -149,8 +149,10 @@ body {
     transform: translateY(-50%) scale(1.1);
 }
 
-/* ===== TOGGLE SIDEBAR BUTTON (dans la sidebar sur desktop, fixe sur mobile) ===== */
-#toggle-sidebar {
+/* Ajouter après la section #toggle-sidebar-inside */
+
+/* ===== BOUTON TOGGLE INTÉRIEUR (dans la sidebar) ===== */
+#toggle-sidebar-inside {
     width: 40px;
     height: 40px;
     background: linear-gradient(135deg, #00d9ff, #0088cc);
@@ -166,20 +168,54 @@ body {
     flex-shrink: 0;
 }
 
-#toggle-sidebar:hover {
+#toggle-sidebar-inside:hover {
     background: linear-gradient(135deg, #00ffff, #00d9ff);
     transform: scale(1.05);
     box-shadow: 0 5px 20px rgba(0, 217, 255, 0.5);
 }
 
-#toggle-sidebar svg {
+#toggle-sidebar-inside svg {
     width: 20px;
     height: 20px;
     transition: all 0.3s;
 }
 
-#sidebar.hidden ~ #toggle-sidebar-mobile svg {
+/* ===== BOUTON TOGGLE EXTÉRIEUR (visible quand sidebar fermée) ===== */
+#toggle-sidebar-outside {
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 200;
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #00d9ff, #0088cc);
+    color: #000;
+    border: 2px solid #00d9ff;
+    border-radius: 8px;
+    cursor: pointer;
+    display: none; /* Caché par défaut */
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 3px 10px rgba(0, 217, 255, 0.5);
+}
+
+#toggle-sidebar-outside:hover {
+    background: linear-gradient(135deg, #00ffff, #00d9ff);
+    transform: scale(1.1);
+    box-shadow: 0 5px 20px rgba(0, 217, 255, 0.7);
+}
+
+#toggle-sidebar-outside svg {
+    width: 24px;
+    height: 24px;
+    transition: all 0.3s;
     transform: scaleX(-1);
+}
+
+/* Afficher le bouton extérieur seulement quand sidebar est cachée */
+#sidebar.hidden ~ #toggle-sidebar-outside {
+    display: flex;
 }
 
 /* Bouton toggle mobile (fixe en haut à gauche) */
