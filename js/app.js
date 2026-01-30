@@ -40,11 +40,27 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// ===== GESTION DE LA SIDEBAR =====
-toggleSidebarBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('hidden');
-});
+// Remplacer la section toggle sidebar par :
 
+// ===== GESTION DE LA SIDEBAR =====
+const toggleSidebarDesktop = document.getElementById('toggle-sidebar');
+const toggleSidebarMobile = document.getElementById('toggle-sidebar-mobile');
+
+// Toggle pour desktop (dans la sidebar)
+if (toggleSidebarDesktop) {
+    toggleSidebarDesktop.addEventListener('click', () => {
+        sidebar.classList.toggle('hidden');
+    });
+}
+
+// Toggle pour mobile (fixe en haut à gauche)
+if (toggleSidebarMobile) {
+    toggleSidebarMobile.addEventListener('click', () => {
+        sidebar.classList.toggle('hidden');
+    });
+}
+
+// Fermer la sidebar au clic sur une conversation sur mobile
 if (window.innerWidth <= 768) {
     conversationsList.addEventListener('click', () => {
         sidebar.classList.add('hidden');
