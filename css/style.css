@@ -41,13 +41,23 @@ body {
     position: sticky;
     top: 0;
     z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .sidebar-header h2 {
-    margin: 0 0 10px 0;
+    margin: 0;
     font-size: 1.3em;
     color: #00d9ff;
     text-shadow: 2px 2px #0088cc;
+    flex: 1;
 }
 
 #new-chat-btn {
@@ -139,8 +149,42 @@ body {
     transform: translateY(-50%) scale(1.1);
 }
 
-/* ===== TOGGLE SIDEBAR BUTTON ===== */
+/* ===== TOGGLE SIDEBAR BUTTON (dans la sidebar sur desktop, fixe sur mobile) ===== */
 #toggle-sidebar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #00d9ff, #0088cc);
+    color: #000;
+    border: 2px solid #00d9ff;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 3px 10px rgba(0, 217, 255, 0.3);
+    flex-shrink: 0;
+}
+
+#toggle-sidebar:hover {
+    background: linear-gradient(135deg, #00ffff, #00d9ff);
+    transform: scale(1.05);
+    box-shadow: 0 5px 20px rgba(0, 217, 255, 0.5);
+}
+
+#toggle-sidebar svg {
+    width: 20px;
+    height: 20px;
+    transition: all 0.3s;
+}
+
+#sidebar.hidden ~ #toggle-sidebar-mobile svg {
+    transform: scaleX(-1);
+}
+
+/* Bouton toggle mobile (fixe en haut à gauche) */
+#toggle-sidebar-mobile {
+    display: none;
     position: fixed;
     left: 10px;
     top: 10px;
@@ -152,27 +196,20 @@ body {
     border: 2px solid #00d9ff;
     border-radius: 8px;
     cursor: pointer;
-    display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s;
-    box-shadow: 0 3px 10px rgba(0, 217, 255, 0.3);
+    box-shadow: 0 3px 10px rgba(0, 217, 255, 0.5);
 }
 
-#toggle-sidebar:hover {
+#toggle-sidebar-mobile:hover {
     background: linear-gradient(135deg, #00ffff, #00d9ff);
-    transform: scale(1.1);
+    transform: scale(1.05);
     box-shadow: 0 5px 20px rgba(0, 217, 255, 0.5);
 }
 
-#toggle-sidebar svg {
+#toggle-sidebar-mobile svg {
     width: 24px;
     height: 24px;
-    transition: all 0.3s;
-}
-
-#sidebar.hidden ~ #toggle-sidebar svg {
-    transform: scaleX(-1);
 }
 
 /* ===== MAIN CONTENT ===== */
@@ -710,24 +747,34 @@ h1 {
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     #sidebar {
-        width: 100%;
+        width: 85%;
         z-index: 1000;
     }
 
     #main-content {
         margin-left: 0;
-        padding: 10px;
-        padding-top: 60px;
+        padding: 70px 10px 10px 10px;
+    }
+
+    /* Afficher le bouton toggle mobile */
+    #toggle-sidebar-mobile {
+        display: flex;
+    }
+
+    /* Cacher le bouton toggle desktop dans la sidebar sur mobile */
+    #toggle-sidebar {
+        display: none;
     }
     
     h1 {
-        font-size: 2em;
+        font-size: 1.8em;
         margin: 5px 0;
     }
     
     #chat-box {
         padding: 10px;
         min-height: 300px;
+        width: 100%;
     }
     
     .user-message, .bot-message {
@@ -739,23 +786,29 @@ h1 {
     #input-container {
         gap: 5px;
         padding: 10px;
-        position: sticky;
-        bottom: 0;
+        width: 100%;
+        flex-wrap: wrap;
     }
     
     #user-input {
         font-size: 1em;
         padding: 10px;
+        min-width: 0;
+        flex: 1 1 100%;
+        order: 1;
     }
     
     #send-button {
-        padding: 10px 15px;
+        padding: 10px 20px;
         font-size: 1em;
+        order: 2;
+        flex: 1;
     }
 
     #attach-file-btn, #home-btn {
         width: 40px;
         height: 40px;
+        order: 0;
     }
 
     #attach-file-btn svg {
@@ -768,20 +821,23 @@ h1 {
         height: 22px;
     }
 
-    #toggle-sidebar {
-        width: 40px;
-        height: 40px;
+    .uploaded-files-container {
+        width: 100%;
+        padding: 0 5px;
     }
 
-    #toggle-sidebar svg {
-        width: 20px;
-        height: 20px;
+    .ad-banner {
+        width: 95%;
     }
 }
 
 @media (max-width: 480px) {
+    #sidebar {
+        width: 90%;
+    }
+
     .ad-banner {
-        font-size: 0.9em;
+        font-size: 0.85em;
         padding: 6px;
     }
     
@@ -794,16 +850,21 @@ h1 {
     }
 
     .uploaded-file .file-name {
-        max-width: 120px;
+        max-width: 100px;
+    }
+
+    h1 {
+        font-size: 1.5em;
+    }
+
+    #clock {
+        font-size: 1em;
+        padding: 6px 10px;
     }
 }
 
 @media (min-width: 769px) {
-    #toggle-sidebar {
-        left: 290px;
-    }
-    
-    #sidebar.hidden ~ #toggle-sidebar {
-        left: 10px;
+    #sidebar.hidden ~ #main-content {
+        margin-left: 0;
     }
 }
