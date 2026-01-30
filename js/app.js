@@ -40,23 +40,21 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Remplacer la section toggle sidebar par :
-
 // ===== GESTION DE LA SIDEBAR =====
-const toggleSidebarDesktop = document.getElementById('toggle-sidebar');
-const toggleSidebarMobile = document.getElementById('toggle-sidebar-mobile');
+const toggleSidebarInside = document.getElementById('toggle-sidebar-inside');
+const toggleSidebarOutside = document.getElementById('toggle-sidebar-outside');
 
-// Toggle pour desktop (dans la sidebar)
-if (toggleSidebarDesktop) {
-    toggleSidebarDesktop.addEventListener('click', () => {
-        sidebar.classList.toggle('hidden');
+// Bouton INTÉRIEUR (dans la sidebar)
+if (toggleSidebarInside) {
+    toggleSidebarInside.addEventListener('click', () => {
+        sidebar.classList.add('hidden');
     });
 }
 
-// Toggle pour mobile (fixe en haut à gauche)
-if (toggleSidebarMobile) {
-    toggleSidebarMobile.addEventListener('click', () => {
-        sidebar.classList.toggle('hidden');
+// Bouton EXTÉRIEUR (apparaît quand sidebar fermée)
+if (toggleSidebarOutside) {
+    toggleSidebarOutside.addEventListener('click', () => {
+        sidebar.classList.remove('hidden');
     });
 }
 
