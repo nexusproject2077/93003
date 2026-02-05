@@ -10,7 +10,6 @@ const clock = document.getElementById('clock');
 const conversationsList = document.getElementById('conversations-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 const sidebar = document.getElementById('sidebar');
-const toggleSidebarBtn = document.getElementById('toggle-sidebar');
 const fileInput = document.getElementById('file-input');
 const attachFileBtn = document.getElementById('attach-file-btn');
 const uploadedFilesDiv = document.getElementById('uploaded-files');
@@ -20,6 +19,11 @@ let conversations = JSON.parse(localStorage.getItem('nexus_conversations')) || [
 let currentConversationId = null;
 let attachedFiles = [];
 let isTyping = false;
+
+// ===== FERMER LA SIDEBAR PAR DÉFAUT SUR MOBILE =====
+if (window.innerWidth <= 768) {
+    sidebar.classList.add('hidden');
+}
 
 // ===== INITIALISATION =====
 if (conversations.length === 0) {
