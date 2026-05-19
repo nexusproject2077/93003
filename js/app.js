@@ -1,5 +1,5 @@
 // ===== CONFIGURATION =====
-const API_KEY = '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';
+// Clé API supprimée - gérée côté backend
 const TYPING_SPEED = 15; // Vitesse de frappe en millisecondes (plus petit = plus rapide)
 
 // ===== ÉLÉMENTS DOM =====
@@ -382,18 +382,16 @@ async function getGroqAIResponse(message) {
             content: fullMessage
         });
 
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
-            },
-            body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    {
-                        role: "system",
-                        content: `Tu es Nexus AI, un assistant IA intelligent, sympa et utile créé par l'entreprise Nexus. Tu réponds en français. 
+const response = await fetch('http://193.168.145.183:3000/chat', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        messages: [
+            {
+                role: "system",
+                content: `Tu es Nexus AI, un assistant IA intelligent, sympa et utile créé par l'entreprise Nexus. Tu réponds en français. 
 
 IMPORTANT: Tu PEUX et tu DOIS analyser, lire et traiter TOUS les types de fichiers que l'utilisateur te partage, incluant:
 - Documents Word (.doc, .docx)
@@ -414,13 +412,11 @@ Ne dis JAMAIS que tu ne peux pas traiter un fichier. Tu es capable de tout analy
 Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel. Réponds de manière claire et concise. Tu peux utiliser le formatage Markdown dans tes réponses.
 
 Tu es fier de représenter Nexus et tu mentionnes parfois que tu es Nexus AI quand c'est approprié.`
-                    },
-                    ...conversation.history
-                ],
-                temperature: 0.7,
-                max_tokens: 2000
-            })
-        });
+            },
+            ...conversation.history
+        ]
+    })
+});
 
         if (!response.ok) {
             const errorData = await response.json();
