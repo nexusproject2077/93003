@@ -382,7 +382,7 @@ async function getGroqAIResponse(message) {
             content: fullMessage
         });
 
-const response = await fetch('http://193.168.145.183:3000/chat', {
+const response = await fetch('https://api.mmi25b11.mmi-troyes.fr/chat', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json'
