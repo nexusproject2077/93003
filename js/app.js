@@ -89,7 +89,7 @@ window.handleRegister = async function() {
         });
         const data = await res.json();
 
-        if (!res.ok) { errorEl.textContent = data.error || 'Erreur lors de l\'inscription.'; return; }
+        if (!res.ok) { errorEl.textContent = data.error || "Erreur lors de l'inscription."; return; }
 
         setAuth(data.token, data.user);
         initChatPage();
@@ -118,7 +118,6 @@ function initChatPage() {
     const user = getUser();
     if (user) document.getElementById('sidebar-username').textContent = `@${user.username}`;
 
-    // Sidebar mobile
     if (window.innerWidth <= 768) sidebar.classList.add('hidden');
 
     loadConversationsFromServer();
@@ -126,24 +125,19 @@ function initChatPage() {
     setInterval(updateClock, 1000);
 }
 
-// Vérifier token au chargement
-if (getToken()) {
-    initChatPage();
-}
-
-// ===== ÉLÉMENTS DOM =====
-const chatBox         = document.getElementById('chat-box');
-const userInput       = document.getElementById('user-input');
-const sendButton      = document.getElementById('send-button');
-const clock           = document.getElementById('clock');
+// ===== ELEMENTS DOM =====
+const chatBox           = document.getElementById('chat-box');
+const userInput         = document.getElementById('user-input');
+const sendButton        = document.getElementById('send-button');
+const clock             = document.getElementById('clock');
 const conversationsList = document.getElementById('conversations-list');
-const newChatBtn      = document.getElementById('new-chat-btn');
-const sidebar         = document.getElementById('sidebar');
-const fileInput       = document.getElementById('file-input');
-const attachFileBtn   = document.getElementById('attach-file-btn');
-const uploadedFilesDiv = document.getElementById('uploaded-files');
+const newChatBtn        = document.getElementById('new-chat-btn');
+const sidebar           = document.getElementById('sidebar');
+const fileInput         = document.getElementById('file-input');
+const attachFileBtn     = document.getElementById('attach-file-btn');
+const uploadedFilesDiv  = document.getElementById('uploaded-files');
 
-// ===== ÉTAT =====
+// ===== ETAT =====
 let conversations = [];
 let currentConversationId = null;
 let attachedFiles = [];
@@ -159,32 +153,35 @@ if (toggleSidebarInside) {
 if (toggleSidebarOutside) {
     toggleSidebarOutside.addEventListener('click', () => sidebar.classList.remove('hidden'));
 }
-if (window.innerWidth <= 768) {
+if (window.innerWidth <= 768 && conversationsList) {
     conversationsList.addEventListener('click', () => sidebar.classList.add('hidden'));
 }
 
 // ===== HORLOGE =====
 function updateClock() {
+    if (!clock) return;
     const now = new Date();
     clock.textContent = [now.getHours(), now.getMinutes(), now.getSeconds()]
         .map(n => String(n).padStart(2, '0')).join(':');
 }
 
 // ===== FICHIERS =====
-attachFileBtn.addEventListener('click', () => fileInput.click());
+if (attachFileBtn) attachFileBtn.addEventListener('click', () => fileInput.click());
 
-fileInput.addEventListener('change', (e) => {
-    Array.from(e.target.files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            attachedFiles.push({ name: file.name, type: file.type, size: file.size, content: event.target.result });
-            renderUploadedFiles();
-        };
-        if (file.type.startsWith('text/') || file.name.endsWith('.txt')) reader.readAsText(file);
-        else reader.readAsDataURL(file);
+if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+        Array.from(e.target.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                attachedFiles.push({ name: file.name, type: file.type, size: file.size, content: event.target.result });
+                renderUploadedFiles();
+            };
+            if (file.type.startsWith('text/') || file.name.endsWith('.txt')) reader.readAsText(file);
+            else reader.readAsDataURL(file);
+        });
+        fileInput.value = '';
     });
-    fileInput.value = '';
-});
+}
 
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
@@ -198,6 +195,7 @@ function formatFileSize(bytes) {
 }
 
 function renderUploadedFiles() {
+    if (!uploadedFilesDiv) return;
     uploadedFilesDiv.innerHTML = '';
     attachedFiles.forEach((file, index) => {
         const fileEl = document.createElement('div');
@@ -206,7 +204,7 @@ function renderUploadedFiles() {
             <span class="file-icon">${getFileIcon(file.name)}</span>
             <span class="file-name" title="${file.name}">${file.name}</span>
             <span style="color:#999;font-size:0.85em;margin-left:8px">${formatFileSize(file.size)}</span>
-            <span class="remove-file" onclick="removeFile(${index})">✕</span>
+            <span class="remove-file" onclick="removeFile(${index})">x</span>
         `;
         uploadedFilesDiv.appendChild(fileEl);
     });
@@ -243,7 +241,7 @@ async function createNewConversation() {
         loadConversation(conv._id);
         renderConversationsList();
     } catch (err) {
-        console.error('Erreur création conversation:', err);
+        console.error('Erreur creation conversation:', err);
     }
 }
 
@@ -282,7 +280,7 @@ function loadConversation(id) {
 
     chatBox.innerHTML = '';
     conv.messages.forEach(msg => {
-        if (msg.type === 'user') addMessage('user-message', msg.content, false);
+        if (msg.type === 'user') addMessage('user-message', msg.content, false, false);
         else addMessage('bot-message', msg.content, true, false);
     });
 
@@ -304,6 +302,7 @@ function updateConversationTitle(message) {
 }
 
 function renderConversationsList() {
+    if (!conversationsList) return;
     conversationsList.innerHTML = '';
     conversations.forEach(conv => {
         const item = document.createElement('div');
@@ -314,14 +313,14 @@ function renderConversationsList() {
         item.innerHTML = `
             <div class="conversation-title">${conv.title}</div>
             <div class="conversation-date">${dateStr} ${timeStr}</div>
-            <button class="delete-conv-btn" onclick="deleteConversation('${conv._id}', event)">✕</button>
+            <button class="delete-conv-btn" onclick="deleteConversation('${conv._id}', event)">x</button>
         `;
         item.addEventListener('click', () => loadConversation(conv._id));
         conversationsList.appendChild(item);
     });
 }
 
-newChatBtn.addEventListener('click', createNewConversation);
+if (newChatBtn) newChatBtn.addEventListener('click', createNewConversation);
 
 // ===== MARKDOWN =====
 function markdownToHTML(text) {
@@ -393,7 +392,7 @@ function showTypingIndicator() {
     const el = document.createElement('div');
     el.className = 'typing-indicator';
     el.id = 'typing';
-    el.innerHTML = '<span>●</span><span>●</span><span>●</span>';
+    el.innerHTML = '<span></span><span></span><span></span>';
     chatBox.appendChild(el);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -441,27 +440,11 @@ async function getGroqAIResponse(message) {
                 messages: [
                     {
                         role: 'system',
-                        content: `Tu es Nexus AI, un assistant IA intelligent, sympa et utile créé par l'entreprise Nexus. Tu réponds en français. 
+                        content: `Tu es Nexus AI, un assistant IA intelligent, sympa et utile cree par l'entreprise Nexus. Tu reponds en francais.
 
-IMPORTANT: Tu PEUX et tu DOIS analyser, lire et traiter TOUS les types de fichiers que l'utilisateur te partage, incluant:
-- Documents Word (.doc, .docx)
-- Fichiers texte (.txt)
-- Images (.jpg, .png, .jpeg, .gif)
-- PDFs
-- Tableurs Excel
-- Tout autre type de fichier
+IMPORTANT: Tu PEUX et tu DOIS analyser, lire et traiter TOUS les types de fichiers que l'utilisateur te partage.
 
-Quand l'utilisateur partage un fichier:
-1. Confirme que tu as bien reçu le fichier
-2. Analyse son contenu en détail
-3. Réponds aux questions de l'utilisateur concernant ce fichier
-4. Propose des améliorations ou des analyses si pertinent
-
-Ne dis JAMAIS que tu ne peux pas traiter un fichier. Tu es capable de tout analyser.
-
-Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, précis et conversationnel. Réponds de manière claire et concise. Tu peux utiliser le formatage Markdown dans tes réponses.
-
-Tu es fier de représenter Nexus et tu mentionnes parfois que tu es Nexus AI quand c'est approprié.`
+Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, precis et conversationnel. Tu peux utiliser le formatage Markdown dans tes reponses.`
                     },
                     ...conv.history
                 ]
@@ -469,9 +452,8 @@ Tu es fier de représenter Nexus et tu mentionnes parfois que tu es Nexus AI qua
         });
 
         if (!response.ok) {
-            const err = await response.json();
             if (response.status === 401) { handleLogout(); return ''; }
-            return '❌ Erreur de connexion à Nexus AI. Réessaie dans quelques secondes.';
+            return 'Erreur de connexion a Nexus AI. Reessaie dans quelques secondes.';
         }
 
         const data = await response.json();
@@ -487,7 +469,7 @@ Tu es fier de représenter Nexus et tu mentionnes parfois que tu es Nexus AI qua
         return aiResponse;
     } catch (error) {
         console.error('Erreur:', error);
-        return '❌ Erreur de connexion. Vérifie ta connexion internet.';
+        return 'Erreur de connexion. Verifie ta connexion internet.';
     }
 }
 
@@ -500,7 +482,7 @@ async function handleMessage() {
     sendButton.disabled = true;
     userInput.disabled  = true;
 
-    const displayMessage = message || '[Fichier(s) envoyé(s)]';
+    const displayMessage = message || '[Fichier(s) envoye(s)]';
     await addMessage('user-message', displayMessage, false, false);
     updateConversationTitle(displayMessage);
     userInput.value = '';
@@ -508,7 +490,7 @@ async function handleMessage() {
     if (message === '1h' && attachedFiles.length === 0) {
         const now = new Date();
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-        const ticket = `Titre 1 voyage\n\nValable 1 heure dès réception du SMS\nLe ${formatDate(now)}\nDe ${formatTime(now)} à ${formatTime(oneHourLater)}\n\n1.35 E\n\n${generateRandomSequence()}\n\n0783643942${generateRandomCode()}\n\nCGV : www.tcat.fr/cgv-ticket-sms`;
+        const ticket = `Titre 1 voyage\n\nValable 1 heure des reception du SMS\nLe ${formatDate(now)}\nDe ${formatTime(now)} a ${formatTime(oneHourLater)}\n\n1.35 E\n\n${generateRandomSequence()}\n\n0783643942${generateRandomCode()}\n\nCGV : www.tcat.fr/cgv-ticket-sms`;
         setTimeout(async () => {
             await addMessage('bot-message', ticket, false, true);
             sendButton.disabled = false;
@@ -527,13 +509,17 @@ async function handleMessage() {
     }
 }
 
-sendButton.addEventListener('click', handleMessage);
-userInput.addEventListener('keypress', (e) => {
+if (sendButton) sendButton.addEventListener('click', handleMessage);
+if (userInput) userInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !sendButton.disabled && !isTyping) handleMessage();
 });
 
-// Enter sur les champs auth
 const loginPwd = document.getElementById('login-password');
 const registerPwd = document.getElementById('register-password');
 if (loginPwd) loginPwd.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
 if (registerPwd) registerPwd.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleRegister(); });
+
+// ===== VERIFIER TOKEN AU CHARGEMENT (toujours en dernier) =====
+if (getToken()) {
+    initChatPage();
+}
