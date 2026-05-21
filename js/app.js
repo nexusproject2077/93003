@@ -533,5 +533,7 @@ userInput.addEventListener('keypress', (e) => {
 });
 
 // Enter sur les champs auth
-document.getElementById('login-password').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
-document.getElementById('register-password').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleRegister(); });
+const loginPwd = document.getElementById('login-password');
+const registerPwd = document.getElementById('register-password');
+if (loginPwd) loginPwd.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
+if (registerPwd) registerPwd.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleRegister(); });
