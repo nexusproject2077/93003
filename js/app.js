@@ -351,14 +351,14 @@ async function typeWriter(element, text, isHTML) {
         for (let i = 0; i <= plain.length; i++) {
             element.innerHTML = markdownToHTML(plain.substring(0, i));
             chatBox.scrollTop = chatBox.scrollHeight;
-            await new Promise(r => setTimeout(r, TYPING_SPEED));
+            await new Promise(r => setTimeout(r, window._typingSpeed ?? TYPING_SPEED));
         }
         element.innerHTML = html;
     } else {
         for (let i = 0; i <= text.length; i++) {
             element.textContent = text.substring(0, i);
             chatBox.scrollTop = chatBox.scrollHeight;
-            await new Promise(r => setTimeout(r, TYPING_SPEED));
+            await new Promise(r => setTimeout(r, window._typingSpeed ?? TYPING_SPEED));
         }
     }
     element.classList.remove('typing');
@@ -415,6 +415,32 @@ function generateRandomCode() {
     return `${l1}${Math.floor(Math.random()*10)}${l2}${l3}`;
 }
 
+// ===== SYSTEM PROMPT BUILDER =====
+function buildSystemPrompt() {
+    const s = loadSettings();
+    let prompt = 'Tu es Nexus AI, un assistant IA intelligent, sympa et utile cree par l\'entreprise Nexus. Tu reponds en francais.';
+
+    if (s.alias) prompt += ` L'utilisateur s'appelle ${s.alias}.`;
+    if (s.profession) prompt += ` Sa profession est : ${s.profession}.`;
+    if (s.about) prompt += ` Informations sur l'utilisateur : ${s.about}.`;
+
+    const styleMap = { formal: 'Adopte un style formel et professionnel.', casual: 'Adopte un style decontracte et familier.', concise: 'Sois tres concis et va droit au but.', detailed: 'Donne des reponses detaillees et completes.' };
+    if (styleMap[s.style]) prompt += ' ' + styleMap[s.style];
+    if (s.warm === 'more') prompt += ' Sois tres chaleureux et bienveillant.';
+    if (s.warm === 'less') prompt += ' Reste neutre et factuel.';
+    if (s.enthusiastic === 'more') prompt += ' Montre de l\'enthousiasme dans tes reponses.';
+    if (s.enthusiastic === 'less') prompt += ' Garde un ton calme et posé.';
+    if (s.lists === 'more') prompt += ' Utilise souvent des titres et des listes.';
+    if (s.lists === 'less') prompt += ' Evite les listes et les titres, prefere la prose.';
+    if (s.emojis === 'more') prompt += ' Utilise des emojis pour illustrer tes reponses.';
+    if (s.emojis === 'less') prompt += ' N\'utilise pas d\'emojis.';
+    if (s.contentFilter || s.safeMode) prompt += ' Filtre tout contenu inapproprie. Reste dans des sujets educatifs et constructifs.';
+    if (s.instructions) prompt += '\n\nInstructions personnalisees : ' + s.instructions;
+
+    prompt += '\n\nIMPORTANT: Tu PEUX et tu DOIS analyser, lire et traiter TOUS les types de fichiers que l\'utilisateur te partage. Tu peux utiliser le formatage Markdown dans tes reponses.';
+    return prompt;
+}
+
 // ===== API GROQ =====
 async function getGroqAIResponse(message) {
     try {
@@ -440,11 +466,7 @@ async function getGroqAIResponse(message) {
                 messages: [
                     {
                         role: 'system',
-                        content: `Tu es Nexus AI, un assistant IA intelligent, sympa et utile cree par l'entreprise Nexus. Tu reponds en francais.
-
-IMPORTANT: Tu PEUX et tu DOIS analyser, lire et traiter TOUS les types de fichiers que l'utilisateur te partage.
-
-Tu peux parler de tout comme ChatGPT ou Gemini. Sois naturel, precis et conversationnel. Tu peux utiliser le formatage Markdown dans tes reponses.`
+                        content: buildSystemPrompt()
                     },
                     ...conv.history
                 ]
@@ -523,3 +545,267 @@ if (registerPwd) registerPwd.addEventListener('keypress', (e) => { if (e.key ===
 if (getToken()) {
     initChatPage();
 }
+
+// ===== SETTINGS =====
+const SETTINGS_KEY = 'nexus_settings';
+
+const defaultSettings = {
+    theme: 'system',
+    contrast: 'system',
+    accent: '#00d2ff',
+    langue: 'auto',
+    typingSpeed: 15,
+    vocalMode: false,
+    notifGroup: 'push',
+    notifCodex: 'push',
+    notifProjects: 'email',
+    notifReco: 'both',
+    notifReplies: 'push',
+    notifTasks: 'both',
+    notifUsage: 'both',
+    style: 'default',
+    warm: 'default',
+    enthusiastic: 'default',
+    lists: 'default',
+    emojis: 'default',
+    quickReplies: true,
+    instructions: '',
+    alias: '',
+    profession: '',
+    about: '',
+    memory: false,
+    modelImprove: true,
+    twoFA: false,
+    contentFilter: false,
+    safeMode: false,
+    enterSend: true,
+};
+
+function loadSettings() {
+    try {
+        return { ...defaultSettings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
+    } catch {
+        return { ...defaultSettings };
+    }
+}
+
+function saveSettings() {
+    const s = readSettingsFromDOM();
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+function readSettingsFromDOM() {
+    const g = id => document.getElementById(id);
+    return {
+        theme:         g('s-theme')?.value || defaultSettings.theme,
+        contrast:      g('s-contrast')?.value || defaultSettings.contrast,
+        accent:        g('s-accent')?.value || defaultSettings.accent,
+        langue:        g('s-langue')?.value || defaultSettings.langue,
+        typingSpeed:   parseInt(g('s-typing-speed')?.value ?? defaultSettings.typingSpeed),
+        vocalMode:     g('s-vocal-mode')?.checked ?? defaultSettings.vocalMode,
+        notifGroup:    g('s-notif-group')?.value || defaultSettings.notifGroup,
+        notifCodex:    g('s-notif-codex')?.value || defaultSettings.notifCodex,
+        notifProjects: g('s-notif-projects')?.value || defaultSettings.notifProjects,
+        notifReco:     g('s-notif-reco')?.value || defaultSettings.notifReco,
+        notifReplies:  g('s-notif-replies')?.value || defaultSettings.notifReplies,
+        notifTasks:    g('s-notif-tasks')?.value || defaultSettings.notifTasks,
+        notifUsage:    g('s-notif-usage')?.value || defaultSettings.notifUsage,
+        style:         g('s-style')?.value || defaultSettings.style,
+        warm:          g('s-warm')?.value || defaultSettings.warm,
+        enthusiastic:  g('s-enthusiastic')?.value || defaultSettings.enthusiastic,
+        lists:         g('s-lists')?.value || defaultSettings.lists,
+        emojis:        g('s-emojis')?.value || defaultSettings.emojis,
+        quickReplies:  g('s-quick-replies')?.checked ?? defaultSettings.quickReplies,
+        instructions:  g('s-instructions')?.value || '',
+        alias:         g('s-alias')?.value || '',
+        profession:    g('s-profession')?.value || '',
+        about:         g('s-about')?.value || '',
+        memory:        g('s-memory')?.checked ?? defaultSettings.memory,
+        modelImprove:  g('s-model-improve')?.checked ?? defaultSettings.modelImprove,
+        twoFA:         g('s-2fa')?.checked ?? defaultSettings.twoFA,
+        contentFilter: g('s-content-filter')?.checked ?? defaultSettings.contentFilter,
+        safeMode:      g('s-safe-mode')?.checked ?? defaultSettings.safeMode,
+        enterSend:     g('s-enter-send')?.checked ?? defaultSettings.enterSend,
+    };
+}
+
+function populateSettingsDOM(s) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const check = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+    set('s-theme', s.theme);
+    set('s-contrast', s.contrast);
+    set('s-accent', s.accent);
+    set('s-langue', s.langue);
+    set('s-typing-speed', s.typingSpeed);
+    check('s-vocal-mode', s.vocalMode);
+    set('s-notif-group', s.notifGroup);
+    set('s-notif-codex', s.notifCodex);
+    set('s-notif-projects', s.notifProjects);
+    set('s-notif-reco', s.notifReco);
+    set('s-notif-replies', s.notifReplies);
+    set('s-notif-tasks', s.notifTasks);
+    set('s-notif-usage', s.notifUsage);
+    set('s-style', s.style);
+    set('s-warm', s.warm);
+    set('s-enthusiastic', s.enthusiastic);
+    set('s-lists', s.lists);
+    set('s-emojis', s.emojis);
+    check('s-quick-replies', s.quickReplies);
+    set('s-instructions', s.instructions);
+    set('s-alias', s.alias);
+    set('s-profession', s.profession);
+    set('s-about', s.about);
+    check('s-memory', s.memory);
+    check('s-model-improve', s.modelImprove);
+    check('s-2fa', s.twoFA);
+    check('s-content-filter', s.contentFilter);
+    check('s-safe-mode', s.safeMode);
+    check('s-enter-send', s.enterSend);
+    updateSliderLabel();
+    updateColorDot();
+}
+
+function id(x) { return document.getElementById(x); }
+
+function applySettings() {
+    saveSettings();
+    const s = loadSettings();
+
+    // Typing speed
+    window._typingSpeed = s.typingSpeed;
+
+    // Accent color
+    document.documentElement.style.setProperty('--accent', s.accent);
+    updateColorDot();
+
+    // Theme
+    const root = document.documentElement;
+    if (s.theme === 'light') {
+        root.classList.add('theme-light');
+    } else {
+        root.classList.remove('theme-light');
+    }
+
+    // Contrast
+    if (s.contrast === 'high') {
+        root.classList.add('contrast-high');
+    } else {
+        root.classList.remove('contrast-high');
+    }
+}
+
+function updateSliderLabel() {
+    const slider = id('s-typing-speed');
+    const label  = id('typing-speed-label');
+    if (slider && label) label.textContent = slider.value + 'ms';
+}
+
+function updateColorDot() {
+    const dot    = id('color-dot');
+    const select = id('s-accent');
+    if (dot && select) dot.style.background = select.value;
+}
+
+window.openSettings = function() {
+    const overlay = id('settings-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    const s = loadSettings();
+    populateSettingsDOM(s);
+    applySettings();
+    updateStorageInfo();
+    const user = getUser();
+    if (user) {
+        const uEl = id('account-username');
+        const eEl = id('account-email');
+        if (uEl) uEl.textContent = '@' + user.username;
+        if (eEl) eEl.textContent = user.email || '—';
+    }
+};
+
+window.closeSettings = function() {
+    const overlay = id('settings-overlay');
+    if (overlay) overlay.classList.add('hidden');
+};
+
+window.handleSettingsOverlayClick = function(e) {
+    if (e.target === id('settings-overlay')) closeSettings();
+};
+
+window.switchSettingsTab = function(tab) {
+    document.querySelectorAll('.settings-nav-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.settings-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'tab-' + tab);
+    });
+};
+
+function updateStorageInfo() {
+    try {
+        let total = 0;
+        for (const key in localStorage) {
+            if (!localStorage.hasOwnProperty(key)) continue;
+            total += (localStorage[key].length + key.length) * 2;
+        }
+        const kb   = (total / 1024).toFixed(1);
+        const pct  = Math.min((total / (5 * 1024 * 1024)) * 100, 100).toFixed(1);
+        const used = id('storage-used');
+        const fill = id('storage-bar-fill');
+        if (used) used.textContent = kb + ' KB / ~5 MB';
+        if (fill) fill.style.width = pct + '%';
+    } catch {}
+}
+
+window.exportData = function() {
+    try {
+        const data = {
+            user: getUser(),
+            settings: loadSettings(),
+            exportedAt: new Date().toISOString(),
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a    = document.createElement('a');
+        a.href     = URL.createObjectURL(blob);
+        a.download = 'nexus-data.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    } catch (err) {
+        alert('Erreur lors de l\'export.');
+    }
+};
+
+window.confirmDeleteAllConversations = function() {
+    if (!confirm('Supprimer TOUTES vos conversations ? Cette action est irréversible.')) return;
+    conversations = [];
+    chatBox.innerHTML = '';
+    fetch(`${API_BASE}/conversations`, { headers: authHeaders() })
+        .then(r => r.json())
+        .then(list => Promise.all(list.map(c =>
+            fetch(`${API_BASE}/conversations/${c._id}`, { method: 'DELETE', headers: authHeaders() })
+        )))
+        .catch(() => {})
+        .finally(() => createNewConversation());
+};
+
+window.clearCache = function() {
+    if (!confirm('Vider le cache local ?')) return;
+    const keep = ['nexus_token', 'nexus_user', SETTINGS_KEY];
+    Object.keys(localStorage).forEach(k => { if (!keep.includes(k)) localStorage.removeItem(k); });
+    updateStorageInfo();
+    alert('Cache vidé.');
+};
+
+// Apply settings on page load
+(function() {
+    const s = loadSettings();
+    window._typingSpeed = s.typingSpeed;
+    document.documentElement.style.setProperty('--accent', s.accent);
+    if (s.theme === 'light') document.documentElement.classList.add('theme-light');
+    if (s.contrast === 'high') document.documentElement.classList.add('contrast-high');
+})();
+
+// Ctrl+, shortcut to open settings
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === ',') { e.preventDefault(); openSettings(); }
+});

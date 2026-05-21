@@ -84,6 +84,11 @@
                 </button>
                 <div class="sidebar-user">
                     <span id="sidebar-username"></span>
+                    <button id="settings-btn" onclick="openSettings()" title="Paramètres">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
                     <button id="logout-btn" onclick="handleLogout()" title="Se déconnecter">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
@@ -138,6 +143,607 @@
                 <span class="nexus-brand">NEXUS</span> · IA Avancée · Propulsé par Groq
             </div>
         </div>
+
+    <!-- ===== SETTINGS MODAL ===== -->
+    <div id="settings-overlay" class="settings-overlay hidden" onclick="handleSettingsOverlayClick(event)">
+        <div class="settings-modal" id="settings-modal">
+            <button class="settings-close" onclick="closeSettings()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+            <nav class="settings-nav">
+                <button class="settings-nav-item active" data-tab="general" onclick="switchSettingsTab('general')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Général
+                </button>
+                <button class="settings-nav-item" data-tab="notifications" onclick="switchSettingsTab('notifications')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    Notifications
+                </button>
+                <button class="settings-nav-item" data-tab="personnalisation" onclick="switchSettingsTab('personnalisation')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                    Personnalisation
+                </button>
+                <button class="settings-nav-item" data-tab="applications" onclick="switchSettingsTab('applications')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    Applications
+                </button>
+                <button class="settings-nav-item" data-tab="facturation" onclick="switchSettingsTab('facturation')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    Facturation
+                </button>
+                <button class="settings-nav-item" data-tab="donnees" onclick="switchSettingsTab('donnees')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    Gestion des données
+                </button>
+                <button class="settings-nav-item" data-tab="stockage" onclick="switchSettingsTab('stockage')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M22 10H2M12 14h.01"/></svg>
+                    Stockage
+                </button>
+                <button class="settings-nav-item" data-tab="securite" onclick="switchSettingsTab('securite')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Sécurité
+                </button>
+                <button class="settings-nav-item" data-tab="controles" onclick="switchSettingsTab('controles')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Contrôles parentaux
+                </button>
+                <button class="settings-nav-item" data-tab="contact" onclick="switchSettingsTab('contact')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    Contact de confiance
+                </button>
+                <button class="settings-nav-item" data-tab="compte" onclick="switchSettingsTab('compte')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Compte
+                </button>
+                <button class="settings-nav-item" data-tab="clavier" onclick="switchSettingsTab('clavier')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h.01M12 14h.01M16 14h.01M6 14h.01M18 14h.01"/></svg>
+                    Clavier
+                </button>
+            </nav>
+
+            <div class="settings-content">
+                <!-- GÉNÉRAL -->
+                <div class="settings-panel active" id="tab-general">
+                    <h2 class="settings-title">Général</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Thème</span>
+                        <select class="settings-select" id="s-theme" onchange="applySettings()">
+                            <option value="system">Système</option>
+                            <option value="dark">Sombre</option>
+                            <option value="light">Clair</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Contraste</span>
+                        <select class="settings-select" id="s-contrast" onchange="applySettings()">
+                            <option value="system">Système</option>
+                            <option value="high">Élevé</option>
+                            <option value="low">Bas</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Couleur d'accentuation</span>
+                        <div class="color-picker-row">
+                            <div class="color-dot" id="color-dot" style="background:#00d2ff"></div>
+                            <select class="settings-select" id="s-accent" onchange="applySettings()">
+                                <option value="#00d2ff">Par défaut</option>
+                                <option value="#7c28dc">Violet</option>
+                                <option value="#10b981">Vert</option>
+                                <option value="#f59e0b">Ambre</option>
+                                <option value="#ef4444">Rouge</option>
+                                <option value="#ec4899">Rose</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Langue</span>
+                        <select class="settings-select" id="s-langue" onchange="applySettings()">
+                            <option value="auto">Détection automatique</option>
+                            <option value="fr">Français</option>
+                            <option value="en">Anglais</option>
+                            <option value="es">Espagnol</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Vitesse d'écriture</span>
+                            <p class="settings-desc">Vitesse d'animation du texte en ms par caractère.</p>
+                        </div>
+                        <div class="slider-row">
+                            <input type="range" class="settings-slider" id="s-typing-speed" min="0" max="60" step="5" value="15" oninput="updateSliderLabel(); applySettings()">
+                            <span class="slider-label" id="typing-speed-label">15ms</span>
+                        </div>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Mode vocal séparé</span>
+                            <p class="settings-desc">Afficher Nexus Voice dans un écran séparé.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-vocal-mode" onchange="applySettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- NOTIFICATIONS -->
+                <div class="settings-panel" id="tab-notifications">
+                    <h2 class="settings-title">Notifications</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Chats de groupe</span>
+                            <p class="settings-desc">Vous recevrez des notifications pour les nouveaux messages dans les chats de groupe.</p>
+                        </div>
+                        <select class="settings-select" id="s-notif-group" onchange="saveSettings()">
+                            <option value="push">Push</option>
+                            <option value="email">E-mail</option>
+                            <option value="both">Push, e-mail</option>
+                            <option value="none">Désactivé</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Codex</span>
+                            <p class="settings-desc">Recevez des notifications sur les tâches Codex.</p>
+                        </div>
+                        <select class="settings-select" id="s-notif-codex" onchange="saveSettings()">
+                            <option value="push">Push</option>
+                            <option value="email">E-mail</option>
+                            <option value="both">Push, e-mail</option>
+                            <option value="none">Désactivé</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Projets</span>
+                            <p class="settings-desc">Vous recevrez une notification à la réception d'une invitation par e-mail à rejoindre un projet partagé.</p>
+                        </div>
+                        <select class="settings-select" id="s-notif-projects" onchange="saveSettings()">
+                            <option value="email">E-mail</option>
+                            <option value="push">Push</option>
+                            <option value="both">Push, e-mail</option>
+                            <option value="none">Désactivé</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Recommandations</span>
+                            <p class="settings-desc">Vous recevrez des notifications sur les dernières nouveautés de Nexus AI (outils, fonctionnalités, conseils).</p>
+                        </div>
+                        <select class="settings-select" id="s-notif-reco" onchange="saveSettings()">
+                            <option value="both">Push, e-mail</option>
+                            <option value="push">Push</option>
+                            <option value="email">E-mail</option>
+                            <option value="none">Désactivé</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Réponses</span>
+                            <p class="settings-desc">Vous recevrez une notification lorsque Nexus AI répondra à des demandes qui prennent du temps, comme les recherches ou la génération d'images.</p>
+                        </div>
+                        <select class="settings-select" id="s-notif-replies" onchange="saveSettings()">
+                            <option value="push">Push</option>
+                            <option value="email">E-mail</option>
+                            <option value="both">Push, e-mail</option>
+                            <option value="none">Désactivé</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Tâches</span>
+                            <p class="settings-desc">Recevez des notifications lorsque les tâches que vous avez créées sont mises à jour.</p>
+                        </div>
+                        <select class="settings-select" id="s-notif-tasks" onchange="saveSettings()">
+                            <option value="both">Push, e-mail</option>
+                            <option value="push">Push</option>
+                            <option value="email">E-mail</option>
+                            <option value="none">Désactivé</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Utilisation</span>
+                            <p class="settings-desc">Vous recevrez des notifications lorsque vos limites relatives aux fonctionnalités telles que la création d'images seront réinitialisées.</p>
+                        </div>
+                        <select class="settings-select" id="s-notif-usage" onchange="saveSettings()">
+                            <option value="both">Push, e-mail</option>
+                            <option value="push">Push</option>
+                            <option value="email">E-mail</option>
+                            <option value="none">Désactivé</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- PERSONNALISATION -->
+                <div class="settings-panel" id="tab-personnalisation">
+                    <h2 class="settings-title">Personnalisation</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Style et ton des réponses</span>
+                            <p class="settings-desc">Définissez le style et le ton des réponses de Nexus AI.</p>
+                        </div>
+                        <select class="settings-select" id="s-style" onchange="saveSettings()">
+                            <option value="default">Par défaut</option>
+                            <option value="formal">Formel</option>
+                            <option value="casual">Décontracté</option>
+                            <option value="concise">Concis</option>
+                            <option value="detailed">Détaillé</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <p class="settings-section-label">Caractéristiques</p>
+                    <p class="settings-desc" style="padding: 0 0 12px">Personnalisez davantage les réponses, en complément du style et du ton sélectionnés.</p>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Chaleureux</span>
+                        <select class="settings-select" id="s-warm" onchange="saveSettings()">
+                            <option value="default">Par défaut</option>
+                            <option value="more">Plus</option>
+                            <option value="less">Moins</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Enthousiaste</span>
+                        <select class="settings-select" id="s-enthusiastic" onchange="saveSettings()">
+                            <option value="default">Par défaut</option>
+                            <option value="more">Plus</option>
+                            <option value="less">Moins</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Titres et listes</span>
+                        <select class="settings-select" id="s-lists" onchange="saveSettings()">
+                            <option value="default">Par défaut</option>
+                            <option value="more">Plus</option>
+                            <option value="less">Moins</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Émojis</span>
+                        <select class="settings-select" id="s-emojis" onchange="saveSettings()">
+                            <option value="default">Par défaut</option>
+                            <option value="more">Plus</option>
+                            <option value="less">Moins</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Réponses rapides</span>
+                            <p class="settings-desc">Nexus AI peut utiliser ses connaissances générales pour donner des réponses rapides et détaillées.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-quick-replies" checked onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row-col">
+                        <span class="settings-label">Instructions personnalisées</span>
+                        <textarea class="settings-textarea" id="s-instructions" placeholder="Préférences supplémentaires de comportement, de style et de ton" rows="3" oninput="saveSettings()"></textarea>
+                    </div>
+                    <div class="settings-divider"></div>
+
+                    <h3 class="settings-subtitle">À propos de vous</h3>
+
+                    <div class="settings-row-col" style="margin-top:14px">
+                        <span class="settings-label">Alias</span>
+                        <input type="text" class="settings-input" id="s-alias" placeholder="Comment Nexus AI doit-il s'adresser à vous ?" oninput="saveSettings()">
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row-col">
+                        <span class="settings-label">Profession</span>
+                        <input type="text" class="settings-input" id="s-profession" placeholder="Votre profession ou domaine" oninput="saveSettings()">
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row-col">
+                        <span class="settings-label">Plus d'informations sur vous</span>
+                        <textarea class="settings-textarea" id="s-about" placeholder="Des centres d'intérêt, des valeurs ou des préférences à prendre en compte" rows="3" oninput="saveSettings()"></textarea>
+                    </div>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Mémoire</span>
+                            <p class="settings-desc">Autorisez Nexus AI à enregistrer et à utiliser les éléments mémorisés pour répondre.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-memory" onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- APPLICATIONS -->
+                <div class="settings-panel" id="tab-applications">
+                    <h2 class="settings-title">Applications</h2>
+                    <div class="settings-divider"></div>
+                    <div class="settings-empty">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                        <p>Aucune application connectée pour l'instant.</p>
+                        <button class="settings-action-btn">Parcourir les applications</button>
+                    </div>
+                </div>
+
+                <!-- FACTURATION -->
+                <div class="settings-panel" id="tab-facturation">
+                    <h2 class="settings-title">Facturation</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Plan actuel</span>
+                            <p class="settings-desc">Nexus AI Gratuit</p>
+                        </div>
+                        <button class="settings-action-btn">Mettre à niveau</button>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Moyen de paiement</span>
+                            <p class="settings-desc">Aucun moyen de paiement enregistré.</p>
+                        </div>
+                        <button class="settings-action-btn">Ajouter</button>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Historique de facturation</span>
+                            <p class="settings-desc">Consultez vos factures passées.</p>
+                        </div>
+                        <button class="settings-action-btn">Voir les factures</button>
+                    </div>
+                </div>
+
+                <!-- GESTION DES DONNÉES -->
+                <div class="settings-panel" id="tab-donnees">
+                    <h2 class="settings-title">Gestion des données</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Amélioration du modèle</span>
+                            <p class="settings-desc">Autoriser Nexus AI à utiliser vos conversations pour améliorer ses modèles.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-model-improve" checked onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Exporter mes données</span>
+                            <p class="settings-desc">Téléchargez toutes vos conversations et données.</p>
+                        </div>
+                        <button class="settings-action-btn" onclick="exportData()">Exporter</button>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Supprimer toutes les conversations</span>
+                            <p class="settings-desc">Cette action est irréversible.</p>
+                        </div>
+                        <button class="settings-action-btn danger" onclick="confirmDeleteAllConversations()">Supprimer</button>
+                    </div>
+                </div>
+
+                <!-- STOCKAGE -->
+                <div class="settings-panel" id="tab-stockage">
+                    <h2 class="settings-title">Stockage</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="storage-bar-container">
+                        <div class="storage-bar-label">
+                            <span>Conversations</span>
+                            <span id="storage-used">Calcul en cours…</span>
+                        </div>
+                        <div class="storage-bar">
+                            <div class="storage-bar-fill" id="storage-bar-fill" style="width: 0%"></div>
+                        </div>
+                        <p class="settings-desc" style="margin-top:6px">Stockage local utilisé par vos conversations.</p>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Vider le cache local</span>
+                            <p class="settings-desc">Supprime les données temporaires stockées localement.</p>
+                        </div>
+                        <button class="settings-action-btn" onclick="clearCache()">Vider</button>
+                    </div>
+                </div>
+
+                <!-- SÉCURITÉ -->
+                <div class="settings-panel" id="tab-securite">
+                    <h2 class="settings-title">Sécurité</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Changer le mot de passe</span>
+                            <p class="settings-desc">Mettez à jour votre mot de passe de connexion.</p>
+                        </div>
+                        <button class="settings-action-btn">Modifier</button>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Authentification à deux facteurs</span>
+                            <p class="settings-desc">Ajoutez une couche de sécurité supplémentaire à votre compte.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-2fa" onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Sessions actives</span>
+                            <p class="settings-desc">Gérez les appareils connectés à votre compte.</p>
+                        </div>
+                        <button class="settings-action-btn">Voir les sessions</button>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Déconnexion de tous les appareils</span>
+                            <p class="settings-desc">Révoquez toutes les sessions actives.</p>
+                        </div>
+                        <button class="settings-action-btn danger">Déconnecter tout</button>
+                    </div>
+                </div>
+
+                <!-- CONTRÔLES PARENTAUX -->
+                <div class="settings-panel" id="tab-controles">
+                    <h2 class="settings-title">Contrôles parentaux</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Filtre de contenu</span>
+                            <p class="settings-desc">Bloquer les contenus inappropriés pour les mineurs.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-content-filter" onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Mode sécurisé strict</span>
+                            <p class="settings-desc">Limitez les sujets abordables aux thèmes éducatifs uniquement.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-safe-mode" onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- CONTACT DE CONFIANCE -->
+                <div class="settings-panel" id="tab-contact">
+                    <h2 class="settings-title">Contact de confiance</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-empty">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        <p>Aucun contact de confiance ajouté.</p>
+                        <button class="settings-action-btn">Ajouter un contact</button>
+                    </div>
+                </div>
+
+                <!-- COMPTE -->
+                <div class="settings-panel" id="tab-compte">
+                    <h2 class="settings-title">Compte</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Nom d'utilisateur</span>
+                        <span class="settings-value" id="account-username">—</span>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Email</span>
+                        <span class="settings-value" id="account-email">—</span>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Membre depuis</span>
+                        <span class="settings-value">2025</span>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Supprimer le compte</span>
+                            <p class="settings-desc">Cette action est définitive et irréversible.</p>
+                        </div>
+                        <button class="settings-action-btn danger">Supprimer</button>
+                    </div>
+                </div>
+
+                <!-- CLAVIER -->
+                <div class="settings-panel" id="tab-clavier">
+                    <h2 class="settings-title">Clavier</h2>
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Envoyer avec Entrée</span>
+                            <p class="settings-desc">Appuyez sur Entrée pour envoyer un message.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-enter-send" checked onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-shortcut-list">
+                        <p class="settings-section-label">Raccourcis clavier</p>
+                        <div class="shortcut-item"><span>Nouvelle conversation</span><kbd>Ctrl + N</kbd></div>
+                        <div class="shortcut-item"><span>Ouvrir les paramètres</span><kbd>Ctrl + ,</kbd></div>
+                        <div class="shortcut-item"><span>Envoyer le message</span><kbd>Entrée</kbd></div>
+                        <div class="shortcut-item"><span>Nouvelle ligne</span><kbd>Shift + Entrée</kbd></div>
+                        <div class="shortcut-item"><span>Masquer/afficher le menu</span><kbd>Ctrl + B</kbd></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     </div>
 
