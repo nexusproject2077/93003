@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>R212 — Intégration web</title>
+  <title>mmi25b11 — Travaux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #0a0a0f;
@@ -16,7 +18,13 @@
       --text-secondary: rgba(255,255,255,0.45);
       --text-tertiary: rgba(255,255,255,0.25);
       --accent: #0a84ff;
+      --accent-soft: rgba(10,132,255,0.15);
       --folder-yellow: #ffd60a;
+      --folder-blue: #0a84ff;
+      --folder-green: #30d158;
+      --folder-red: #ff453a;
+      --folder-purple: #bf5af2;
+      --folder-orange: #ff9f0a;
       --radius: 16px;
       --radius-sm: 10px;
     }
@@ -26,11 +34,12 @@
     body {
       background: var(--bg);
       color: var(--text-primary);
-      font-family: -apple-system, 'Helvetica Neue', sans-serif;
+      font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
     }
 
+    /* Background mesh */
     body::before {
       content: '';
       position: fixed;
@@ -51,27 +60,9 @@
       padding: 0 20px 80px;
     }
 
-    /* ── Breadcrumb ── */
-    .breadcrumb {
-      padding: 28px 0 0;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      animation: fadeDown 0.5s ease both;
-    }
-
-    .breadcrumb a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-    .breadcrumb a:hover { text-decoration: underline; }
-    .breadcrumb-sep { color: var(--text-tertiary); }
-
     /* ── Header ── */
     .header {
-      padding: 16px 0 32px;
+      padding: 60px 0 32px;
       animation: fadeDown 0.6s ease both;
     }
 
@@ -99,6 +90,41 @@
       font-weight: 400;
     }
 
+    /* ── Search bar ── */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 28px;
+      animation: fadeDown 0.6s 0.05s ease both;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 14px 11px 40px;
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      backdrop-filter: blur(20px);
+    }
+
+    .search-input::placeholder { color: var(--text-tertiary); }
+    .search-input:focus {
+      border-color: var(--accent);
+      background: var(--surface-hover);
+    }
+
     /* ── Section label ── */
     .section-label {
       font-size: 20px;
@@ -106,7 +132,77 @@
       letter-spacing: -0.2px;
       color: var(--text-primary);
       margin-bottom: 12px;
+      margin-top: 32px;
       animation: fadeDown 0.6s 0.1s ease both;
+    }
+
+    /* ── Folder grid ── */
+    .folder-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .folder-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 16px 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.15s;
+      backdrop-filter: blur(20px);
+      text-decoration: none;
+      display: block;
+      animation: fadeUp 0.5s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .folder-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .folder-card:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-active);
+      transform: scale(1.02);
+    }
+
+    .folder-card:active {
+      background: var(--surface-active);
+      transform: scale(0.98);
+    }
+
+    .folder-icon {
+      width: 48px;
+      height: 40px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .folder-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 2px 8px currentColor);
+      opacity: 0.9;
+    }
+
+    .folder-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+      margin-bottom: 3px;
+    }
+
+    .folder-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
     }
 
     /* ── File list ── */
@@ -131,6 +227,7 @@
     }
 
     .file-item:last-child { border-bottom: none; }
+
     .file-item:hover { background: var(--surface-hover); }
     .file-item:active { background: var(--surface-active); }
 
@@ -167,7 +264,7 @@
 
     .file-chevron {
       color: var(--text-tertiary);
-      font-size: 16px;
+      font-size: 12px;
       flex-shrink: 0;
     }
 
@@ -179,35 +276,17 @@
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.02em;
-      flex-shrink: 0;
     }
 
+    .badge-blue { background: rgba(10,132,255,0.18); color: #0a84ff; }
+    .badge-green { background: rgba(48,209,88,0.18); color: #30d158; }
     .badge-orange { background: rgba(255,159,10,0.18); color: #ff9f0a; }
-    .badge-blue   { background: rgba(10,132,255,0.18); color: #0a84ff; }
-    .badge-green  { background: rgba(48,209,88,0.18);  color: #30d158; }
 
-    /* ── Back button ── */
-    .back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 32px;
-      padding: 8px 14px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 500;
-      transition: background 0.15s, border-color 0.15s;
-      backdrop-filter: blur(20px);
-      animation: fadeDown 0.5s 0.05s ease both;
-    }
-    .back-btn:hover {
-      background: var(--surface-hover);
-      border-color: var(--border-active);
-      color: var(--text-primary);
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 32px 0;
     }
 
     /* ── Animations ── */
@@ -221,11 +300,16 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .file-item:nth-child(1) { animation-delay: 0.10s; }
-    .file-item:nth-child(2) { animation-delay: 0.15s; }
-    .file-item:nth-child(3) { animation-delay: 0.20s; }
-    .file-item:nth-child(4) { animation-delay: 0.25s; }
-    .file-item:nth-child(5) { animation-delay: 0.30s; }
+    .folder-card:nth-child(1) { animation-delay: 0.08s; }
+    .folder-card:nth-child(2) { animation-delay: 0.14s; }
+    .folder-card:nth-child(3) { animation-delay: 0.20s; }
+    .folder-card:nth-child(4) { animation-delay: 0.26s; }
+    .folder-card:nth-child(5) { animation-delay: 0.32s; }
+    .folder-card:nth-child(6) { animation-delay: 0.38s; }
+
+    .file-item:nth-child(1) { animation-delay: 0.12s; }
+    .file-item:nth-child(2) { animation-delay: 0.18s; }
+    .file-item:nth-child(3) { animation-delay: 0.24s; }
 
     /* ── Footer ── */
     .footer {
@@ -235,7 +319,9 @@
       color: var(--text-tertiary);
     }
 
+    /* ── Responsive ── */
     @media (max-width: 480px) {
+      .folder-grid { grid-template-columns: repeat(2, 1fr); }
       .header-title { font-size: 28px; }
     }
   </style>
@@ -243,77 +329,136 @@
 <body>
 <div class="container">
 
-  <!-- Breadcrumb -->
-  <div class="breadcrumb">
-    <a href="http://193.168.145.183/">mmi25b11</a>
-    <span class="breadcrumb-sep">›</span>
-    <span>R212</span>
-  </div>
-
   <!-- Header -->
   <div class="header">
-    <div class="header-eyebrow">IUT Troyes · BUT MMI · Intégration web</div>
-    <div class="header-title">R212</div>
+    <div class="header-eyebrow">IUT Troyes · BUT MMI</div>
+    <div class="header-title">Mes Travaux</div>
     <div class="header-subtitle">mmi25b11 · Promotion 2025–2026</div>
   </div>
 
-  <!-- Back -->
-  <a href="http://193.168.145.183/" class="back-btn">
-    ‹ &nbsp;Retour aux modules
-  </a>
+  <!-- Search -->
+  <div class="search-wrap">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input class="search-input" type="search" placeholder="Rechercher un dossier ou fichier…" id="searchInput" />
+  </div>
 
-  <!-- Séquences -->
-  <div class="section-label">Séquences</div>
+  <!-- Modules section -->
+  <div class="section-label">Modules</div>
 
-  <div class="file-list">
+  <div class="folder-grid" id="folderGrid">
 
-    <a href="sequence1/" class="file-item" >
+    <a href="r212/" class="folder-card" data-name="R212">
+      <div class="folder-icon" style="color: var(--folder-yellow)">
+        <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="currentColor" opacity="0.9"/>
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="url(#g1)" opacity="0.3"/>
+          <defs>
+            <linearGradient id="g1" x1="0" y1="6" x2="48" y2="40" gradientUnits="userSpaceOnUse">
+              <stop stop-color="white"/>
+              <stop offset="1" stop-color="white" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="folder-name">R212</div>
+      <div class="folder-meta">Intégration web</div>
+    </a>
+
+    <a href="#" class="folder-card" data-name="R210" style="opacity:0.5;pointer-events:none;">
+      <div class="folder-icon" style="color: var(--folder-purple)">
+        <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="currentColor" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="folder-name">R210</div>
+      <div class="folder-meta">Motion design</div>
+    </a>
+
+    <a href="#" class="folder-card" data-name="R216" style="opacity:0.5;pointer-events:none;">
+      <div class="folder-icon" style="color: var(--folder-green)">
+        <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="currentColor" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="folder-name">R216</div>
+      <div class="folder-meta">Statistiques</div>
+    </a>
+
+    <a href="http://sae203.mmi25b11.mmi-troyes.fr" target="_blank" class="folder-card" data-name="SAE203">
+      <div class="folder-icon" style="color: var(--folder-blue)">
+        <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="currentColor" opacity="0.9"/>
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="url(#g4)" opacity="0.3"/>
+          <defs>
+            <linearGradient id="g4" x1="0" y1="6" x2="48" y2="40" gradientUnits="userSpaceOnUse">
+              <stop stop-color="white"/>
+              <stop offset="1" stop-color="white" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="folder-name">SAE203</div>
+      <div class="folder-meta">E-Sport Hub</div>
+    </a>
+
+    <a href="#" class="folder-card" data-name="WR213" style="opacity:0.5;pointer-events:none;">
+      <div class="folder-icon" style="color: var(--folder-orange)">
+        <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="currentColor" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="folder-name">WR213</div>
+      <div class="folder-meta">PHP MVC</div>
+    </a>
+
+    <a href="#" class="folder-card" data-name="WR209" style="opacity:0.5;pointer-events:none;">
+      <div class="folder-icon" style="color: var(--folder-red)">
+        <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 10C0 7.79 1.79 6 4 6H18L22 10H44C46.21 10 48 11.79 48 14V36C48 38.21 46.21 40 44 40H4C1.79 40 0 38.21 0 36V10Z" fill="currentColor" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="folder-name">WR209</div>
+      <div class="folder-meta">Tarot design</div>
+    </a>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- R212 détail -->
+  <div class="section-label">R212 — Fichiers</div>
+
+  <div class="file-list" id="fileList">
+
+    <a href="r212/" class="file-item" data-name="R212 Index">
+      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📁</div>
+      <div class="file-info">
+        <div class="file-name">r212 /</div>
+        <div class="file-path">r212 / index.html</div>
+      </div>
+      <span class="badge badge-orange">Dossier</span>
+      <span class="file-chevron">›</span>
+    </a>
+
+    <a href="r212/sequence1/" class="file-item" data-name="Séquence 1">
       <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
       <div class="file-info">
-        <div class="file-name">Séquence 1</div>
+        <div class="file-name">sequence1 /</div>
         <div class="file-path">r212 / sequence1 /</div>
       </div>
       <span class="badge badge-orange">Dossier</span>
       <span class="file-chevron">›</span>
     </a>
 
-    <a href="sequence2/" class="file-item">
-      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
+    <a href="r212/sequence1/monopoly.html" class="file-item" data-name="Monopoly">
+      <div class="file-icon-wrap" style="background: rgba(10,132,255,0.12);">🌐</div>
       <div class="file-info">
-        <div class="file-name">Séquence 2</div>
-        <div class="file-path">r212 / sequence2 /</div>
+        <div class="file-name">monopoly.html</div>
+        <div class="file-path">r212 / sequence1 / monopoly.html</div>
       </div>
-      <span class="badge badge-orange">Dossier</span>
-      <span class="file-chevron">›</span>
-    </a>
-
-    <a href="sequence3/" class="file-item">
-      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
-      <div class="file-info">
-        <div class="file-name">Séquence 3</div>
-        <div class="file-path">r212 / sequence3 /</div>
-      </div>
-      <span class="badge badge-orange">Dossier</span>
-      <span class="file-chevron">›</span>
-    </a>
-
-    <a href="sequence4/" class="file-item">
-      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
-      <div class="file-info">
-        <div class="file-name">Séquence 4</div>
-        <div class="file-path">r212 / sequence4 /</div>
-      </div>
-      <span class="badge badge-orange">Dossier</span>
-      <span class="file-chevron">›</span>
-    </a>
-
-    <a href="sequence5/" class="file-item">
-      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
-      <div class="file-info">
-        <div class="file-name">Séquence 5</div>
-        <div class="file-path">r212 / sequence5 /</div>
-      </div>
-      <span class="badge badge-orange">Dossier</span>
+      <span class="badge badge-blue">HTML</span>
       <span class="file-chevron">›</span>
     </a>
 
@@ -324,5 +469,27 @@
   </div>
 
 </div>
+
+<script>
+  // Search filter
+  const searchInput = document.getElementById('searchInput');
+  const folderCards = document.querySelectorAll('.folder-card');
+  const fileItems = document.querySelectorAll('.file-item');
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+
+    folderCards.forEach(card => {
+      const name = card.dataset.name.toLowerCase();
+      card.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+
+    fileItems.forEach(item => {
+      const name = item.dataset.name.toLowerCase();
+      item.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+  });
+</script>
+
 </body>
 </html>

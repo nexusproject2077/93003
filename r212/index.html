@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>R212 — Intégration web</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: rgba(255,255,255,0.05);
+      --surface-hover: rgba(255,255,255,0.09);
+      --surface-active: rgba(255,255,255,0.13);
+      --border: rgba(255,255,255,0.08);
+      --border-active: rgba(255,255,255,0.18);
+      --text-primary: rgba(255,255,255,0.95);
+      --text-secondary: rgba(255,255,255,0.45);
+      --text-tertiary: rgba(255,255,255,0.25);
+      --accent: #0a84ff;
+      --folder-yellow: #ffd60a;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, 'Helvetica Neue', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(10,132,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(191,90,242,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 50% 50%, rgba(48,209,88,0.03) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb {
+      padding: 28px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      animation: fadeDown 0.5s ease both;
+    }
+
+    .breadcrumb a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb-sep { color: var(--text-tertiary); }
+
+    /* ── Header ── */
+    .header {
+      padding: 16px 0 32px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .header-eyebrow {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .header-title {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+      line-height: 1.1;
+    }
+
+    .header-subtitle {
+      margin-top: 6px;
+      font-size: 15px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+
+    /* ── File list ── */
+    .file-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s;
+      border-bottom: 1px solid var(--border);
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: var(--surface-hover); }
+    .file-item:active { background: var(--surface-active); }
+
+    .file-icon-wrap {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+    }
+
+    .file-info { flex: 1; min-width: 0; }
+
+    .file-name {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-path {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-chevron {
+      color: var(--text-tertiary);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+    }
+
+    .badge-orange { background: rgba(255,159,10,0.18); color: #ff9f0a; }
+    .badge-blue   { background: rgba(10,132,255,0.18); color: #0a84ff; }
+    .badge-green  { background: rgba(48,209,88,0.18);  color: #30d158; }
+
+    /* ── Back button ── */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 32px;
+      padding: 8px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s;
+      backdrop-filter: blur(20px);
+      animation: fadeDown 0.5s 0.05s ease both;
+    }
+    .back-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-active);
+      color: var(--text-primary);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .file-item:nth-child(1) { animation-delay: 0.10s; }
+    .file-item:nth-child(2) { animation-delay: 0.15s; }
+    .file-item:nth-child(3) { animation-delay: 0.20s; }
+    .file-item:nth-child(4) { animation-delay: 0.25s; }
+    .file-item:nth-child(5) { animation-delay: 0.30s; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 48px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    @media (max-width: 480px) {
+      .header-title { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <a href="../">mmi25b11</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>R212</span>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-eyebrow">IUT Troyes · BUT MMI · Intégration web</div>
+    <div class="header-title">R212</div>
+    <div class="header-subtitle">mmi25b11 · Promotion 2025–2026</div>
+  </div>
+
+  <!-- Back -->
+  <a href="../" class="back-btn">
+    ‹ &nbsp;Retour aux modules
+  </a>
+
+  <!-- Séquences -->
+  <div class="section-label">Séquences</div>
+
+  <div class="file-list">
+
+    <a href="sequence1/" class="file-item" >
+      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
+      <div class="file-info">
+        <div class="file-name">Séquence 1</div>
+        <div class="file-path">r212 / sequence1 /</div>
+      </div>
+      <span class="badge badge-orange">Dossier</span>
+      <span class="file-chevron">›</span>
+    </a>
+
+    <a href="sequence2/" class="file-item">
+      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
+      <div class="file-info">
+        <div class="file-name">Séquence 2</div>
+        <div class="file-path">r212 / sequence2 /</div>
+      </div>
+      <span class="badge badge-orange">Dossier</span>
+      <span class="file-chevron">›</span>
+    </a>
+
+    <a href="sequence3/" class="file-item">
+      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
+      <div class="file-info">
+        <div class="file-name">Séquence 3</div>
+        <div class="file-path">r212 / sequence3 /</div>
+      </div>
+      <span class="badge badge-orange">Dossier</span>
+      <span class="file-chevron">›</span>
+    </a>
+
+    <a href="sequence4/" class="file-item">
+      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
+      <div class="file-info">
+        <div class="file-name">Séquence 4</div>
+        <div class="file-path">r212 / sequence4 /</div>
+      </div>
+      <span class="badge badge-orange">Dossier</span>
+      <span class="file-chevron">›</span>
+    </a>
+
+    <a href="sequence5/" class="file-item">
+      <div class="file-icon-wrap" style="background: rgba(255,214,10,0.12);">📂</div>
+      <div class="file-info">
+        <div class="file-name">Séquence 5</div>
+        <div class="file-path">r212 / sequence5 /</div>
+      </div>
+      <span class="badge badge-orange">Dossier</span>
+      <span class="file-chevron">›</span>
+    </a>
+
+  </div>
+
+  <div class="footer">
+    mmi25b11 · IUT de Troyes · BUT MMI 2025–2026
+  </div>
+
+</div>
+</body>
+</html>
