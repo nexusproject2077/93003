@@ -118,7 +118,12 @@ function initChatPage() {
     const user = getUser();
     if (user) document.getElementById('sidebar-username').textContent = `@${user.username}`;
 
-    if (window.innerWidth <= 768) sidebar.classList.add('hidden');
+    if (window.innerWidth <= 768) {
+        sidebar.classList.add('hidden');
+    } else {
+        const savedSidebar = localStorage.getItem('nexus_sidebar');
+        if (savedSidebar === 'hidden') sidebar.classList.add('hidden');
+    }
 
     loadConversationsFromServer();
     updateClock();
@@ -143,15 +148,27 @@ let currentConversationId = null;
 let attachedFiles = [];
 let isTyping = false;
 
+// ===== DEBOUNCE =====
+function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 // ===== SIDEBAR =====
 const toggleSidebarInside  = document.getElementById('toggle-sidebar-inside');
 const toggleSidebarOutside = document.getElementById('toggle-sidebar-outside');
 
 if (toggleSidebarInside) {
-    toggleSidebarInside.addEventListener('click', () => sidebar.classList.add('hidden'));
+    toggleSidebarInside.addEventListener('click', () => {
+        sidebar.classList.add('hidden');
+        localStorage.setItem('nexus_sidebar', 'hidden');
+    });
 }
 if (toggleSidebarOutside) {
-    toggleSidebarOutside.addEventListener('click', () => sidebar.classList.remove('hidden'));
+    toggleSidebarOutside.addEventListener('click', () => {
+        sidebar.classList.remove('hidden');
+        localStorage.setItem('nexus_sidebar', 'visible');
+    });
 }
 if (window.innerWidth <= 768 && conversationsList) {
     conversationsList.addEventListener('click', () => sidebar.classList.add('hidden'));
@@ -257,6 +274,8 @@ async function saveConversationToServer(conv) {
     }
 }
 
+const debouncedSave = debounce(saveConversationToServer, 900);
+
 window.deleteConversation = async function(id, event) {
     event.stopPropagation();
     if (!confirm('Supprimer cette conversation ?')) return;
@@ -304,7 +323,14 @@ function updateConversationTitle(message) {
 function renderConversationsList() {
     if (!conversationsList) return;
     conversationsList.innerHTML = '';
-    conversations.forEach(conv => {
+    const filtered = searchQuery
+        ? conversations.filter(c => c.title.toLowerCase().includes(searchQuery))
+        : conversations;
+    if (filtered.length === 0 && searchQuery) {
+        conversationsList.innerHTML = '<p style="color:rgba(255,255,255,0.2);font-size:0.78rem;text-align:center;padding:16px 0">Aucun résultat</p>';
+        return;
+    }
+    filtered.forEach(conv => {
         const item = document.createElement('div');
         item.className = 'conversation-item' + (conv._id === currentConversationId ? ' active' : '');
         const date    = new Date(conv.createdAt);
@@ -324,7 +350,11 @@ if (newChatBtn) newChatBtn.addEventListener('click', createNewConversation);
 
 // ===== MARKDOWN =====
 function markdownToHTML(text) {
-    text = text.replace(/```(\w+)?\n([\s\S]+?)```/g, '<pre><code>$2</code></pre>');
+    // Code blocks (must run first)
+    text = text.replace(/```(\w+)?\n?([\s\S]+?)```/g, (_, lang, code) => {
+        const langAttr = lang ? ` class="language-${lang}"` : '';
+        return `<div class="code-block-wrapper"><pre><code${langAttr}>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre><button class="copy-code-btn" onclick="copyCode(this)">Copier</button></div>`;
+    });
     text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
     text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
@@ -333,42 +363,113 @@ function markdownToHTML(text) {
     text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
     text = text.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
     text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    // Fix list wrapping: group consecutive <li> lines into <ul>
     text = text.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
-    text = text.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    text = text.replace(/(<li>[\s\S]*?<\/li>)(\n<li>[\s\S]*?<\/li>)*/g, match => `<ul>${match}</ul>`);
     text = text.replace(/\n\n/g, '</p><p>');
     return text;
 }
 
 // ===== TYPEWRITER =====
+let stopRequested = false;
+let currentFetch = null;
+
+window.stopGeneration = function() {
+    stopRequested = true;
+    if (currentFetch) { currentFetch.abort(); currentFetch = null; }
+    isTyping = false;
+    hideTypingIndicator();
+    sendButton.disabled = false;
+    userInput.disabled  = false;
+    userInput.focus();
+    toggleStopButton(false);
+};
+
+function toggleStopButton(show) {
+    const stopBtn = document.getElementById('stop-button');
+    if (!stopBtn) return;
+    stopBtn.classList.toggle('hidden', !show);
+    sendButton.classList.toggle('hidden', show);
+}
+
 async function typeWriter(element, text, isHTML) {
     element.classList.add('typing');
     isTyping = true;
+    stopRequested = false;
+    const speed = window._typingSpeed ?? TYPING_SPEED;
+
     if (isHTML) {
         const html = markdownToHTML(text);
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
-        const plain = temp.textContent;
-        for (let i = 0; i <= plain.length; i++) {
-            element.innerHTML = markdownToHTML(plain.substring(0, i));
-            chatBox.scrollTop = chatBox.scrollHeight;
-            await new Promise(r => setTimeout(r, window._typingSpeed ?? TYPING_SPEED));
+        if (speed === 0) {
+            element.innerHTML = html;
+        } else {
+            // word-chunk animation: far fewer frames than char-by-char
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            const plain = temp.textContent;
+            const tokens = plain.match(/\S+|\s+/g) || [];
+            let buf = '';
+            for (const token of tokens) {
+                if (stopRequested) break;
+                buf += token;
+                if (token.trim()) {
+                    element.innerHTML = markdownToHTML(buf);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                    await new Promise(r => setTimeout(r, speed));
+                }
+            }
+            element.innerHTML = html;
         }
-        element.innerHTML = html;
     } else {
-        for (let i = 0; i <= text.length; i++) {
-            element.textContent = text.substring(0, i);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            await new Promise(r => setTimeout(r, window._typingSpeed ?? TYPING_SPEED));
+        if (speed === 0) {
+            element.textContent = text;
+        } else {
+            const tokens = text.match(/\S+|\s+/g) || [];
+            let buf = '';
+            for (const token of tokens) {
+                if (stopRequested) break;
+                buf += token;
+                if (token.trim()) {
+                    element.textContent = buf;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                    await new Promise(r => setTimeout(r, speed));
+                }
+            }
+            element.textContent = text;
         }
     }
+
     element.classList.remove('typing');
     isTyping = false;
+
+    // syntax highlight code blocks
+    if (isHTML && typeof hljs !== 'undefined') {
+        element.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+    }
 }
 
 // ===== MESSAGES =====
 async function addMessage(className, message, isHTML = false, animate = true) {
     const msg = document.createElement('div');
     msg.className = className;
+
+    // Copy button (revealed on hover via CSS)
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.title = 'Copier';
+    copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(message).then(() => {
+            copyBtn.classList.add('copied');
+            copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            setTimeout(() => {
+                copyBtn.classList.remove('copied');
+                copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            }, 1800);
+        }).catch(() => {});
+    };
+    msg.appendChild(copyBtn);
+
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -382,7 +483,7 @@ async function addMessage(className, message, isHTML = false, animate = true) {
     const conv = getCurrentConversation();
     if (conv && !conv.messages.find(m => m.content === message)) {
         conv.messages.push({ type: className.includes('user') ? 'user' : 'bot', content: message });
-        saveConversationToServer(conv);
+        debouncedSave(conv);
     }
 
     return msg;
@@ -459,9 +560,11 @@ async function getGroqAIResponse(message) {
         if (!conv.history) conv.history = [];
         conv.history.push({ role: 'user', content: fullMessage });
 
+        currentFetch = new AbortController();
         const response = await fetch(`${API_BASE}/chat`, {
             method: 'POST',
             headers: authHeaders(),
+            signal: currentFetch.signal,
             body: JSON.stringify({
                 messages: [
                     {
@@ -473,6 +576,7 @@ async function getGroqAIResponse(message) {
             })
         });
 
+        currentFetch = null;
         if (!response.ok) {
             if (response.status === 401) { handleLogout(); return ''; }
             return 'Erreur de connexion a Nexus AI. Reessaie dans quelques secondes.';
@@ -490,6 +594,7 @@ async function getGroqAIResponse(message) {
 
         return aiResponse;
     } catch (error) {
+        if (error.name === 'AbortError') return '';
         console.error('Erreur:', error);
         return 'Erreur de connexion. Verifie ta connexion internet.';
     }
@@ -508,6 +613,7 @@ async function handleMessage() {
     await addMessage('user-message', displayMessage, false, false);
     updateConversationTitle(displayMessage);
     userInput.value = '';
+    userInput.style.height = 'auto';
 
     if (message === '1h' && attachedFiles.length === 0) {
         const now = new Date();
@@ -518,9 +624,11 @@ async function handleMessage() {
             sendButton.disabled = false;
             userInput.disabled  = false;
             userInput.focus();
+            toggleStopButton(false);
         }, 500);
         navigator.clipboard.writeText(ticket).catch(console.error);
     } else {
+        toggleStopButton(true);
         showTypingIndicator();
         const aiResponse = await getGroqAIResponse(message || 'Analyse ces fichiers');
         hideTypingIndicator();
@@ -528,13 +636,28 @@ async function handleMessage() {
         sendButton.disabled = false;
         userInput.disabled  = false;
         userInput.focus();
+        toggleStopButton(false);
     }
 }
 
 if (sendButton) sendButton.addEventListener('click', handleMessage);
-if (userInput) userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !sendButton.disabled && !isTyping) handleMessage();
-});
+
+// Auto-resize textarea
+if (userInput) {
+    userInput.addEventListener('input', () => {
+        userInput.style.height = 'auto';
+        userInput.style.height = Math.min(userInput.scrollHeight, 160) + 'px';
+    });
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            const s = loadSettings();
+            if (s.enterSend !== false && !sendButton.disabled && !isTyping) {
+                e.preventDefault();
+                handleMessage();
+            }
+        }
+    });
+}
 
 const loginPwd = document.getElementById('login-password');
 const registerPwd = document.getElementById('register-password');
@@ -790,10 +913,10 @@ window.confirmDeleteAllConversations = function() {
 
 window.clearCache = function() {
     if (!confirm('Vider le cache local ?')) return;
-    const keep = ['nexus_token', 'nexus_user', SETTINGS_KEY];
+    const keep = ['nexus_token', 'nexus_user', SETTINGS_KEY, 'nexus_sidebar'];
     Object.keys(localStorage).forEach(k => { if (!keep.includes(k)) localStorage.removeItem(k); });
     updateStorageInfo();
-    alert('Cache vidé.');
+    showToast('Cache vidé.', 'success');
 };
 
 // Apply settings on page load
@@ -805,7 +928,48 @@ window.clearCache = function() {
     if (s.contrast === 'high') document.documentElement.classList.add('contrast-high');
 })();
 
-// Ctrl+, shortcut to open settings
+// Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === ',') { e.preventDefault(); openSettings(); }
+    if (e.ctrlKey && e.key === 'n') { e.preventDefault(); createNewConversation(); }
+    if (e.ctrlKey && e.key === 'b') {
+        e.preventDefault();
+        if (sidebar.classList.contains('hidden')) {
+            sidebar.classList.remove('hidden');
+            localStorage.setItem('nexus_sidebar', 'visible');
+        } else {
+            sidebar.classList.add('hidden');
+            localStorage.setItem('nexus_sidebar', 'hidden');
+        }
+    }
 });
+
+// ===== CONVERSATION SEARCH =====
+let searchQuery = '';
+
+window.filterConversations = function(q) {
+    searchQuery = q.toLowerCase().trim();
+    renderConversationsList();
+};
+
+// ===== TOAST =====
+window.showToast = function(msg, type = '', duration = 2400) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast' + (type ? ' ' + type : '');
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, duration);
+};
+
+// ===== COPY CODE BLOCK =====
+window.copyCode = function(btn) {
+    const code = btn.closest('.code-block-wrapper')?.querySelector('code');
+    if (!code) return;
+    navigator.clipboard.writeText(code.textContent).then(() => {
+        btn.textContent = 'Copié !';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copier'; btn.classList.remove('copied'); }, 1800);
+    }).catch(() => {});
+};
