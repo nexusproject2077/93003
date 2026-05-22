@@ -115,7 +115,13 @@ function initChatPage() {
     const user = getUser();
     if (user) document.getElementById('sidebar-username').textContent = `@${user.username}`;
 
-    if (window.innerWidth <= 768) sidebar.classList.add('hidden');
+    if (window.innerWidth <= 768) {
+        sidebar.classList.add('hidden');
+        if (sidebarBackdrop) sidebarBackdrop.classList.remove('visible');
+    } else {
+        const savedSidebar = localStorage.getItem('nexus_sidebar');
+        if (savedSidebar === 'hidden') sidebar.classList.add('hidden');
+    }
 
     loadConversationsFromServer();
     loadSettingsFromServer();
@@ -150,21 +156,33 @@ function debounce(fn, ms) {
 // ===== SIDEBAR =====
 const toggleSidebarInside  = document.getElementById('toggle-sidebar-inside');
 const toggleSidebarOutside = document.getElementById('toggle-sidebar-outside');
+const sidebarBackdrop      = document.getElementById('sidebar-backdrop');
 
-if (toggleSidebarInside) {
-    toggleSidebarInside.addEventListener('click', () => {
-        sidebar.classList.add('hidden');
-        saveSidebarStateToServer('hidden');
-    });
+function isMobile() { return window.innerWidth <= 768; }
+
+function openSidebar() {
+    sidebar.classList.remove('hidden');
+    localStorage.setItem('nexus_sidebar', 'visible');
+    if (isMobile() && sidebarBackdrop) sidebarBackdrop.classList.add('visible');
+    saveSidebarStateToServer('visible');
 }
-if (toggleSidebarOutside) {
-    toggleSidebarOutside.addEventListener('click', () => {
-        sidebar.classList.remove('hidden');
-        saveSidebarStateToServer('visible');
-    });
+
+function closeSidebar() {
+    sidebar.classList.add('hidden');
+    localStorage.setItem('nexus_sidebar', 'hidden');
+    if (sidebarBackdrop) sidebarBackdrop.classList.remove('visible');
+    saveSidebarStateToServer('hidden');
 }
-if (window.innerWidth <= 768 && conversationsList) {
-    conversationsList.addEventListener('click', () => sidebar.classList.add('hidden'));
+
+window.closeSidebarMobile = closeSidebar;
+
+if (toggleSidebarInside)  toggleSidebarInside.addEventListener('click',  closeSidebar);
+if (toggleSidebarOutside) toggleSidebarOutside.addEventListener('click', openSidebar);
+
+if (conversationsList) {
+    conversationsList.addEventListener('click', () => {
+        if (isMobile()) closeSidebar();
+    });
 }
 
 // ===== HORLOGE =====
@@ -1116,13 +1134,7 @@ document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'n') { e.preventDefault(); createNewConversation(); }
     if (e.ctrlKey && e.key === 'b') {
         e.preventDefault();
-        if (sidebar.classList.contains('hidden')) {
-            sidebar.classList.remove('hidden');
-            saveSidebarStateToServer('visible');
-        } else {
-            sidebar.classList.add('hidden');
-            saveSidebarStateToServer('hidden');
-        }
+        sidebar.classList.contains('hidden') ? openSidebar() : closeSidebar();
     }
 });
 
