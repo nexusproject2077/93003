@@ -53,9 +53,7 @@ window.handleLogin = async function() {
             body: JSON.stringify({ email, password })
         });
         const data = await res.json();
-
         if (!res.ok) { errorEl.textContent = data.error || 'Erreur de connexion.'; return; }
-
         setAuth(data.token, data.user);
         initChatPage();
     } catch {
@@ -88,9 +86,7 @@ window.handleRegister = async function() {
             body: JSON.stringify({ username, email, password })
         });
         const data = await res.json();
-
         if (!res.ok) { errorEl.textContent = data.error || "Erreur lors de l'inscription."; return; }
-
         setAuth(data.token, data.user);
         initChatPage();
     } catch {
@@ -104,6 +100,7 @@ window.handleRegister = async function() {
 // ===== LOGOUT =====
 window.handleLogout = function() {
     clearAuth();
+    _settingsCache = null;
     conversations = [];
     currentConversationId = null;
     document.getElementById('chat-page').classList.add('hidden');
@@ -118,14 +115,10 @@ function initChatPage() {
     const user = getUser();
     if (user) document.getElementById('sidebar-username').textContent = `@${user.username}`;
 
-    if (window.innerWidth <= 768) {
-        sidebar.classList.add('hidden');
-    } else {
-        const savedSidebar = localStorage.getItem('nexus_sidebar');
-        if (savedSidebar === 'hidden') sidebar.classList.add('hidden');
-    }
+    if (window.innerWidth <= 768) sidebar.classList.add('hidden');
 
     loadConversationsFromServer();
+    loadSettingsFromServer();
     updateClock();
     setInterval(updateClock, 1000);
 }
@@ -161,13 +154,13 @@ const toggleSidebarOutside = document.getElementById('toggle-sidebar-outside');
 if (toggleSidebarInside) {
     toggleSidebarInside.addEventListener('click', () => {
         sidebar.classList.add('hidden');
-        localStorage.setItem('nexus_sidebar', 'hidden');
+        saveSidebarStateToServer('hidden');
     });
 }
 if (toggleSidebarOutside) {
     toggleSidebarOutside.addEventListener('click', () => {
         sidebar.classList.remove('hidden');
-        localStorage.setItem('nexus_sidebar', 'visible');
+        saveSidebarStateToServer('visible');
     });
 }
 if (window.innerWidth <= 768 && conversationsList) {
@@ -189,6 +182,7 @@ if (fileInput) {
     fileInput.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files);
         for (const file of files) {
+ claude/parameter-configuration-goiQL
             const ext = file.name.split('.').pop().toLowerCase();
             const isImage = file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext);
 
@@ -232,6 +226,18 @@ if (fileInput) {
                     if (idx !== -1) attachedFiles[idx] = { name: file.name, type: file.type, size: file.size, kind: 'error', content: null };
                 }
                 renderUploadedFiles();
+
+            const placeholder = { name: file.name, type: file.type, size: file.size, kind: 'loading', content: null };
+            attachedFiles.push(placeholder);
+            renderUploadedFiles();
+            try {
+                const extracted = await readFileContent(file);
+                const idx = attachedFiles.indexOf(placeholder);
+                if (idx !== -1) attachedFiles[idx] = extracted;
+            } catch (err) {
+                const idx = attachedFiles.indexOf(placeholder);
+                if (idx !== -1) attachedFiles[idx] = { name: file.name, type: file.type, size: file.size, kind: 'error', content: null };
+ main
             }
         }
         fileInput.value = '';
@@ -247,9 +253,9 @@ async function readFileContent(file) {
     const base = { name: file.name, type: file.type, size: file.size };
     const ext = file.name.split('.').pop().toLowerCase();
 
-    // ----- Images -----
     if (file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) {
         const dataUrl = await readAsDataURL(file);
+ claude/parameter-configuration-goiQL
         const info    = await getImageDimensions(dataUrl);
         const colors  = await analyzeImageColors(dataUrl);
 
@@ -265,33 +271,34 @@ async function readFileContent(file) {
             : `${info.width}×${info.height}px · analyse visuelle`;
 
         return { ...base, kind: 'image', content, preview: dataUrl, description: desc };
+
+        const info = await getImageDimensions(dataUrl);
+        const compressed = await compressImage(dataUrl, 1024, 0.75);
+        return { ...base, kind: 'image', content: compressed, preview: dataUrl,
+                 description: `Image ${file.name} — ${info.width}x${info.height}px` };
+ main
     }
 
-    // ----- Plain text / CSV -----
     if (file.type.startsWith('text/') || ['txt','csv','md','json','xml','html','js','ts','py','java','c','cpp','css'].includes(ext)) {
         const text = await readAsText(file);
         return { ...base, kind: 'text', content: text, description: `Texte (${text.split('\n').length} lignes)` };
     }
 
-    // ----- PDF -----
     if (file.type === 'application/pdf' || ext === 'pdf') {
         const text = await extractPDFText(file);
         return { ...base, kind: 'text', content: text, description: `PDF extrait (${text.split('\n').length} lignes)` };
     }
 
-    // ----- Excel -----
     if (['xlsx','xls','ods'].includes(ext) || file.type.includes('spreadsheet') || file.type.includes('excel')) {
         const text = await extractExcelText(file);
         return { ...base, kind: 'text', content: text, description: `Tableau extrait` };
     }
 
-    // ----- Word -----
     if (['docx'].includes(ext) || file.type.includes('wordprocessingml')) {
         const text = await extractWordText(file);
         return { ...base, kind: 'text', content: text, description: `Document extrait (${text.split('\n').length} lignes)` };
     }
 
-    // ----- Fallback: try as text -----
     try {
         const text = await readAsText(file);
         return { ...base, kind: 'text', content: text };
@@ -303,8 +310,30 @@ async function readFileContent(file) {
 function getImageDimensions(dataUrl) {
     return new Promise(resolve => {
         const img = new Image();
+ claude/parameter-configuration-goiQL
         img.onload  = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
         img.onerror = () => resolve({ width: 0, height: 0 });
+
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror = () => resolve({ width: 0, height: 0 });
+        img.src = dataUrl;
+    });
+}
+
+function compressImage(dataUrl, maxWidth = 1024, quality = 0.75) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.naturalWidth;
+            let h = img.naturalHeight;
+            if (w > maxWidth) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(dataUrl);
+ main
         img.src = dataUrl;
     });
 }
@@ -371,7 +400,7 @@ async function captionImageWithHF(dataUrl, mimeType) {
 }
 
 async function extractPDFText(file) {
-    if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js non chargé');
+    if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js non charge');
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const buffer = await readAsArrayBuffer(file);
     const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
@@ -388,12 +417,12 @@ async function extractPDFText(file) {
         const pageText = Object.keys(lineMap).sort((a,b) => b-a).map(y => lineMap[y].trim()).join('\n');
         pages.push(`--- Page ${i} ---\n${pageText}`);
     }
-    if (pdf.numPages > maxPages) pages.push(`[${pdf.numPages - maxPages} page(s) supplémentaire(s) tronquée(s)]`);
+    if (pdf.numPages > maxPages) pages.push(`[${pdf.numPages - maxPages} page(s) tronquees]`);
     return pages.join('\n\n');
 }
 
 async function extractExcelText(file) {
-    if (typeof XLSX === 'undefined') throw new Error('SheetJS non chargé');
+    if (typeof XLSX === 'undefined') throw new Error('SheetJS non charge');
     const buffer = await readAsArrayBuffer(file);
     const workbook = XLSX.read(buffer, { type: 'array' });
     return workbook.SheetNames.map(name => {
@@ -403,7 +432,7 @@ async function extractExcelText(file) {
 }
 
 async function extractWordText(file) {
-    if (typeof mammoth === 'undefined') throw new Error('mammoth.js non chargé');
+    if (typeof mammoth === 'undefined') throw new Error('mammoth.js non charge');
     const buffer = await readAsArrayBuffer(file);
     const result = await mammoth.extractRawText({ arrayBuffer: buffer });
     return result.value;
@@ -426,7 +455,6 @@ function renderUploadedFiles() {
     attachedFiles.forEach((file, index) => {
         const fileEl = document.createElement('div');
         fileEl.className = 'uploaded-file' + (file.kind === 'loading' ? ' file-loading' : '');
-
         if (file.kind === 'image' && file.preview) {
             const badge = file.content
                 ? '<span class="file-badge ok">✓ analysable</span>'
@@ -437,6 +465,7 @@ function renderUploadedFiles() {
                     <span class="file-name" title="${file.name}">${file.name}</span>
                     <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
                 </div>
+claude/parameter-configuration-goiQL
                 ${badge}
                 <span class="remove-file" onclick="removeFile(${index})">×</span>
             `;
@@ -445,6 +474,15 @@ function renderUploadedFiles() {
                 ? '<span class="file-badge extracting">extraction…</span>'
                 : (file.kind === 'text' || file.kind === 'image') && file.content
                 ? '<span class="file-badge ok">✓ analysable</span>'
+
+                <span class="remove-file" onclick="removeFile(${index})">x</span>
+            `;
+        } else {
+            const statusBadge = file.kind === 'loading'
+                ? '<span class="file-badge extracting">extraction...</span>'
+                : file.kind === 'text' && file.description
+                ? '<span class="file-badge ok">analysable</span>'
+ main
                 : file.kind === 'error'
                 ? '<span class="file-badge err">erreur</span>'
                 : '';
@@ -455,7 +493,7 @@ function renderUploadedFiles() {
                     <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
                 </div>
                 ${statusBadge}
-                <span class="remove-file" onclick="removeFile(${index})">×</span>
+                <span class="remove-file" onclick="removeFile(${index})">x</span>
             `;
         }
         uploadedFilesDiv.appendChild(fileEl);
@@ -473,11 +511,8 @@ async function loadConversationsFromServer() {
         const res = await fetch(`${API_BASE}/conversations`, { headers: authHeaders() });
         if (res.status === 401) { handleLogout(); return; }
         conversations = await res.json();
-        if (conversations.length === 0) {
-            await createNewConversation();
-        } else {
-            loadConversation(conversations[0]._id);
-        }
+        if (conversations.length === 0) await createNewConversation();
+        else loadConversation(conversations[0]._id);
         renderConversationsList();
     } catch {
         conversations = [];
@@ -531,13 +566,11 @@ function loadConversation(id) {
     currentConversationId = id;
     const conv = conversations.find(c => c._id === id);
     if (!conv) return;
-
     chatBox.innerHTML = '';
     conv.messages.forEach(msg => {
         if (msg.type === 'user') addMessage('user-message', msg.content, false, false);
         else addMessage('bot-message', msg.content, true, false);
     });
-
     renderConversationsList();
     setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 100);
 }
@@ -562,7 +595,7 @@ function renderConversationsList() {
         ? conversations.filter(c => c.title.toLowerCase().includes(searchQuery))
         : conversations;
     if (filtered.length === 0 && searchQuery) {
-        conversationsList.innerHTML = '<p style="color:rgba(255,255,255,0.2);font-size:0.78rem;text-align:center;padding:16px 0">Aucun résultat</p>';
+        conversationsList.innerHTML = '<p style="color:rgba(255,255,255,0.2);font-size:0.78rem;text-align:center;padding:16px 0">Aucun resultat</p>';
         return;
     }
     filtered.forEach(conv => {
@@ -585,7 +618,6 @@ if (newChatBtn) newChatBtn.addEventListener('click', createNewConversation);
 
 // ===== MARKDOWN =====
 function markdownToHTML(text) {
-    // Code blocks (must run first)
     text = text.replace(/```(\w+)?\n?([\s\S]+?)```/g, (_, lang, code) => {
         const langAttr = lang ? ` class="language-${lang}"` : '';
         return `<div class="code-block-wrapper"><pre><code${langAttr}>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre><button class="copy-code-btn" onclick="copyCode(this)">Copier</button></div>`;
@@ -598,7 +630,6 @@ function markdownToHTML(text) {
     text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
     text = text.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
     text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    // Fix list wrapping: group consecutive <li> lines into <ul>
     text = text.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
     text = text.replace(/(<li>[\s\S]*?<\/li>)(\n<li>[\s\S]*?<\/li>)*/g, match => `<ul>${match}</ul>`);
     text = text.replace(/\n\n/g, '</p><p>');
@@ -638,7 +669,6 @@ async function typeWriter(element, text, isHTML) {
         if (speed === 0) {
             element.innerHTML = html;
         } else {
-            // word-chunk animation: far fewer frames than char-by-char
             const temp = document.createElement('div');
             temp.innerHTML = html;
             const plain = temp.textContent;
@@ -677,7 +707,6 @@ async function typeWriter(element, text, isHTML) {
     element.classList.remove('typing');
     isTyping = false;
 
-    // syntax highlight code blocks
     if (isHTML && typeof hljs !== 'undefined') {
         element.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
     }
@@ -688,7 +717,6 @@ async function addMessage(className, message, isHTML = false, animate = true) {
     const msg = document.createElement('div');
     msg.className = className;
 
-    // Copy button (revealed on hover via CSS)
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-btn';
     copyBtn.title = 'Copier';
@@ -704,7 +732,6 @@ async function addMessage(className, message, isHTML = false, animate = true) {
         }).catch(() => {});
     };
     msg.appendChild(copyBtn);
-
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -754,26 +781,23 @@ function generateRandomCode() {
 // ===== SYSTEM PROMPT BUILDER =====
 function buildSystemPrompt() {
     const s = loadSettings();
-    let prompt = 'Tu es Nexus AI, un assistant IA intelligent, sympa et utile cree par l\'entreprise Nexus. Tu reponds en francais.';
-
+    let prompt = "Tu es Nexus AI, un assistant IA intelligent, sympa et utile cree par l'entreprise Nexus. Tu reponds en francais.";
     if (s.alias) prompt += ` L'utilisateur s'appelle ${s.alias}.`;
     if (s.profession) prompt += ` Sa profession est : ${s.profession}.`;
     if (s.about) prompt += ` Informations sur l'utilisateur : ${s.about}.`;
-
     const styleMap = { formal: 'Adopte un style formel et professionnel.', casual: 'Adopte un style decontracte et familier.', concise: 'Sois tres concis et va droit au but.', detailed: 'Donne des reponses detaillees et completes.' };
     if (styleMap[s.style]) prompt += ' ' + styleMap[s.style];
     if (s.warm === 'more') prompt += ' Sois tres chaleureux et bienveillant.';
     if (s.warm === 'less') prompt += ' Reste neutre et factuel.';
-    if (s.enthusiastic === 'more') prompt += ' Montre de l\'enthousiasme dans tes reponses.';
-    if (s.enthusiastic === 'less') prompt += ' Garde un ton calme et posé.';
+    if (s.enthusiastic === 'more') prompt += " Montre de l'enthousiasme dans tes reponses.";
+    if (s.enthusiastic === 'less') prompt += ' Garde un ton calme et pose.';
     if (s.lists === 'more') prompt += ' Utilise souvent des titres et des listes.';
     if (s.lists === 'less') prompt += ' Evite les listes et les titres, prefere la prose.';
     if (s.emojis === 'more') prompt += ' Utilise des emojis pour illustrer tes reponses.';
-    if (s.emojis === 'less') prompt += ' N\'utilise pas d\'emojis.';
-    if (s.contentFilter || s.safeMode) prompt += ' Filtre tout contenu inapproprie. Reste dans des sujets educatifs et constructifs.';
+    if (s.emojis === 'less') prompt += " N'utilise pas d'emojis.";
+    if (s.contentFilter || s.safeMode) prompt += ' Filtre tout contenu inapproprie.';
     if (s.instructions) prompt += '\n\nInstructions personnalisees : ' + s.instructions;
-
-    prompt += '\n\nIMPORTANT: Tu PEUX et tu DOIS analyser, lire et traiter TOUS les types de fichiers que l\'utilisateur te partage. Tu peux utiliser le formatage Markdown dans tes reponses.';
+    prompt += "\n\nIMPORTANT: Tu PEUX analyser tous les fichiers. Tu peux utiliser le formatage Markdown.";
     return prompt;
 }
 
@@ -783,6 +807,7 @@ async function getGroqAIResponse(message) {
         const conv = getCurrentConversation();
         if (!conv.history) conv.history = [];
 
+ claude/parameter-configuration-goiQL
         // Build the full text message — all file types (images included) send their
         // extracted text content; base64 is never forwarded to the backend.
         let fullMessage = message || '';
@@ -792,6 +817,19 @@ async function getGroqAIResponse(message) {
                 if (f.content && f.kind !== 'binary') {
                     const preview = f.content.length > 15000
                         ? f.content.substring(0, 15000) + `\n[… ${f.content.length - 15000} caractères tronqués]`
+
+        const images    = attachedFiles.filter(f => f.kind === 'image');
+        const textFiles = attachedFiles.filter(f => f.kind === 'text' || f.kind === 'binary');
+
+        let textPart = message || '';
+        if (textFiles.length > 0) {
+            textPart += '\n\n';
+            textFiles.forEach(f => {
+                textPart += `\n[Fichier joint : ${f.name} (${formatFileSize(f.size)})]\n`;
+                if (f.content) {
+                    const preview = f.content.length > 15000
+                        ? f.content.substring(0, 15000) + `\n[... ${f.content.length - 15000} caracteres tronques]`
+ main
                         : f.content;
                     fullMessage += preview + '\n';
                 } else {
@@ -800,7 +838,30 @@ async function getGroqAIResponse(message) {
             });
         }
 
+ claude/parameter-configuration-goiQL
         conv.history.push({ role: 'user', content: fullMessage || 'Analyse ces fichiers' });
+
+        let currentContent;
+        let historyEntry;
+        if (images.length > 0) {
+            const parts = [{ type: 'text', text: textPart || 'Analyse ces fichiers' }];
+            images.forEach(img => {
+                parts.push({ type: 'image_url', image_url: { url: img.content } });
+            });
+            currentContent = parts;
+            historyEntry = textPart + images.map(img => `\n[Image jointe : ${img.name}]`).join('');
+        } else {
+            currentContent = textPart || 'Analyse ces fichiers';
+            historyEntry = currentContent;
+        }
+
+        conv.history.push({ role: 'user', content: historyEntry });
+
+        const historyForAPI = conv.history.slice(0, -1).map(m => ({
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content : m.content
+        }));
+main
 
         currentFetch = new AbortController();
         const response = await fetch(`${API_BASE}/chat`, {
@@ -881,7 +942,6 @@ async function handleMessage() {
 
 if (sendButton) sendButton.addEventListener('click', handleMessage);
 
-// Auto-resize textarea
 if (userInput) {
     userInput.addEventListener('input', () => {
         userInput.style.height = 'auto';
@@ -910,40 +970,20 @@ if (getToken()) {
 
 // ===== SETTINGS =====
 const SETTINGS_KEY = 'nexus_settings';
+let _settingsCache = null;
 
 const defaultSettings = {
-    theme: 'system',
-    contrast: 'system',
-    accent: '#00d2ff',
-    langue: 'auto',
-    typingSpeed: 15,
-    vocalMode: false,
-    notifGroup: 'push',
-    notifCodex: 'push',
-    notifProjects: 'email',
-    notifReco: 'both',
-    notifReplies: 'push',
-    notifTasks: 'both',
-    notifUsage: 'both',
-    style: 'default',
-    warm: 'default',
-    enthusiastic: 'default',
-    lists: 'default',
-    emojis: 'default',
-    quickReplies: true,
-    instructions: '',
-    alias: '',
-    profession: '',
-    about: '',
-    memory: false,
-    modelImprove: true,
-    twoFA: false,
-    contentFilter: false,
-    safeMode: false,
-    enterSend: true,
+    theme: 'system', contrast: 'system', accent: '#00d2ff', langue: 'auto',
+    typingSpeed: 15, vocalMode: false, notifGroup: 'push', notifCodex: 'push',
+    notifProjects: 'email', notifReco: 'both', notifReplies: 'push', notifTasks: 'both',
+    notifUsage: 'both', style: 'default', warm: 'default', enthusiastic: 'default',
+    lists: 'default', emojis: 'default', quickReplies: true, instructions: '',
+    alias: '', profession: '', about: '', memory: false, modelImprove: true,
+    twoFA: false, contentFilter: false, safeMode: false, enterSend: true,
 };
 
 function loadSettings() {
+    if (_settingsCache) return { ...defaultSettings, ..._settingsCache };
     try {
         return { ...defaultSettings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
     } catch {
@@ -951,9 +991,55 @@ function loadSettings() {
     }
 }
 
+async function loadSettingsFromServer() {
+    try {
+        const res = await fetch(`${API_BASE}/user/settings`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        _settingsCache = data.settings || {};
+        if (data.sidebarState === 'hidden') sidebar.classList.add('hidden');
+        else if (window.innerWidth > 768) sidebar.classList.remove('hidden');
+        const s = loadSettings();
+        window._typingSpeed = s.typingSpeed;
+        document.documentElement.style.setProperty('--accent', s.accent || '#00d2ff');
+        if (s.theme === 'light') document.documentElement.classList.add('theme-light');
+        else document.documentElement.classList.remove('theme-light');
+        if (s.contrast === 'high') document.documentElement.classList.add('contrast-high');
+        else document.documentElement.classList.remove('contrast-high');
+    } catch (err) {
+        console.error('Erreur chargement settings:', err);
+    }
+}
+
+async function saveSettingsToServer(s) {
+    try {
+        _settingsCache = s;
+        await fetch(`${API_BASE}/user/settings`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({ settings: s })
+        });
+    } catch (err) {
+        console.error('Erreur sauvegarde settings:', err);
+    }
+}
+
+async function saveSidebarStateToServer(state) {
+    try {
+        await fetch(`${API_BASE}/user/settings`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({ sidebarState: state })
+        });
+    } catch (err) {
+        console.error('Erreur sauvegarde sidebar:', err);
+    }
+}
+
 function saveSettings() {
     const s = readSettingsFromDOM();
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    _settingsCache = s;
+    saveSettingsToServer(s);
 }
 
 function readSettingsFromDOM() {
@@ -992,37 +1078,23 @@ function readSettingsFromDOM() {
 }
 
 function populateSettingsDOM(s) {
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const set   = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const check = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
-    set('s-theme', s.theme);
-    set('s-contrast', s.contrast);
-    set('s-accent', s.accent);
-    set('s-langue', s.langue);
-    set('s-typing-speed', s.typingSpeed);
+    set('s-theme', s.theme); set('s-contrast', s.contrast); set('s-accent', s.accent);
+    set('s-langue', s.langue); set('s-typing-speed', s.typingSpeed);
     check('s-vocal-mode', s.vocalMode);
-    set('s-notif-group', s.notifGroup);
-    set('s-notif-codex', s.notifCodex);
-    set('s-notif-projects', s.notifProjects);
-    set('s-notif-reco', s.notifReco);
-    set('s-notif-replies', s.notifReplies);
-    set('s-notif-tasks', s.notifTasks);
-    set('s-notif-usage', s.notifUsage);
-    set('s-style', s.style);
-    set('s-warm', s.warm);
-    set('s-enthusiastic', s.enthusiastic);
-    set('s-lists', s.lists);
-    set('s-emojis', s.emojis);
+    set('s-notif-group', s.notifGroup); set('s-notif-codex', s.notifCodex);
+    set('s-notif-projects', s.notifProjects); set('s-notif-reco', s.notifReco);
+    set('s-notif-replies', s.notifReplies); set('s-notif-tasks', s.notifTasks);
+    set('s-notif-usage', s.notifUsage); set('s-style', s.style);
+    set('s-warm', s.warm); set('s-enthusiastic', s.enthusiastic);
+    set('s-lists', s.lists); set('s-emojis', s.emojis);
     check('s-quick-replies', s.quickReplies);
-    set('s-instructions', s.instructions);
-    set('s-alias', s.alias);
-    set('s-profession', s.profession);
-    set('s-about', s.about);
-    check('s-memory', s.memory);
-    check('s-model-improve', s.modelImprove);
-    check('s-2fa', s.twoFA);
-    check('s-content-filter', s.contentFilter);
-    check('s-safe-mode', s.safeMode);
-    check('s-enter-send', s.enterSend);
+    set('s-instructions', s.instructions); set('s-alias', s.alias);
+    set('s-profession', s.profession); set('s-about', s.about);
+    check('s-memory', s.memory); check('s-model-improve', s.modelImprove);
+    check('s-2fa', s.twoFA); check('s-content-filter', s.contentFilter);
+    check('s-safe-mode', s.safeMode); check('s-enter-send', s.enterSend);
     updateSliderLabel();
     updateColorDot();
 }
@@ -1032,28 +1104,14 @@ function id(x) { return document.getElementById(x); }
 function applySettings() {
     saveSettings();
     const s = loadSettings();
-
-    // Typing speed
     window._typingSpeed = s.typingSpeed;
-
-    // Accent color
     document.documentElement.style.setProperty('--accent', s.accent);
     updateColorDot();
-
-    // Theme
     const root = document.documentElement;
-    if (s.theme === 'light') {
-        root.classList.add('theme-light');
-    } else {
-        root.classList.remove('theme-light');
-    }
-
-    // Contrast
-    if (s.contrast === 'high') {
-        root.classList.add('contrast-high');
-    } else {
-        root.classList.remove('contrast-high');
-    }
+    if (s.theme === 'light') root.classList.add('theme-light');
+    else root.classList.remove('theme-light');
+    if (s.contrast === 'high') root.classList.add('contrast-high');
+    else root.classList.remove('contrast-high');
 }
 
 function updateSliderLabel() {
@@ -1105,17 +1163,12 @@ window.switchSettingsTab = function(tab) {
 
 function updateStorageInfo() {
     try {
-        let total = 0;
-        for (const key in localStorage) {
-            if (!localStorage.hasOwnProperty(key)) continue;
-            total += (localStorage[key].length + key.length) * 2;
-        }
-        const kb   = (total / 1024).toFixed(1);
-        const pct  = Math.min((total / (5 * 1024 * 1024)) * 100, 100).toFixed(1);
+        const tokenSize = ((localStorage.getItem('nexus_token') || '').length + (localStorage.getItem('nexus_user') || '').length) * 2;
+        const kb   = (tokenSize / 1024).toFixed(1);
         const used = id('storage-used');
         const fill = id('storage-bar-fill');
-        if (used) used.textContent = kb + ' KB / ~5 MB';
-        if (fill) fill.style.width = pct + '%';
+        if (used) used.textContent = kb + ' KB (donnees sur serveur)';
+        if (fill) fill.style.width = '1%';
     } catch {}
 }
 
@@ -1123,7 +1176,7 @@ window.exportData = function() {
     try {
         const data = {
             user: getUser(),
-            settings: loadSettings(),
+            settings: _settingsCache || loadSettings(),
             exportedAt: new Date().toISOString(),
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1133,12 +1186,12 @@ window.exportData = function() {
         a.click();
         URL.revokeObjectURL(a.href);
     } catch (err) {
-        alert('Erreur lors de l\'export.');
+        alert("Erreur lors de l'export.");
     }
 };
 
 window.confirmDeleteAllConversations = function() {
-    if (!confirm('Supprimer TOUTES vos conversations ? Cette action est irréversible.')) return;
+    if (!confirm('Supprimer TOUTES vos conversations ? Cette action est irreversible.')) return;
     conversations = [];
     chatBox.innerHTML = '';
     fetch(`${API_BASE}/conversations`, { headers: authHeaders() })
@@ -1152,10 +1205,10 @@ window.confirmDeleteAllConversations = function() {
 
 window.clearCache = function() {
     if (!confirm('Vider le cache local ?')) return;
-    const keep = ['nexus_token', 'nexus_user', SETTINGS_KEY, 'nexus_sidebar'];
+    const keep = ['nexus_token', 'nexus_user'];
     Object.keys(localStorage).forEach(k => { if (!keep.includes(k)) localStorage.removeItem(k); });
     updateStorageInfo();
-    showToast('Cache vidé.', 'success');
+    showToast('Cache vide.', 'success');
 };
 
 // Apply settings on page load
@@ -1175,10 +1228,10 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         if (sidebar.classList.contains('hidden')) {
             sidebar.classList.remove('hidden');
-            localStorage.setItem('nexus_sidebar', 'visible');
+            saveSidebarStateToServer('visible');
         } else {
             sidebar.classList.add('hidden');
-            localStorage.setItem('nexus_sidebar', 'hidden');
+            saveSidebarStateToServer('hidden');
         }
     }
 });
@@ -1207,7 +1260,7 @@ window.copyCode = function(btn) {
     const code = btn.closest('.code-block-wrapper')?.querySelector('code');
     if (!code) return;
     navigator.clipboard.writeText(code.textContent).then(() => {
-        btn.textContent = 'Copié !';
+        btn.textContent = 'Copie !';
         btn.classList.add('copied');
         setTimeout(() => { btn.textContent = 'Copier'; btn.classList.remove('copied'); }, 1800);
     }).catch(() => {});
