@@ -186,23 +186,128 @@ function updateClock() {
 if (attachFileBtn) attachFileBtn.addEventListener('click', () => fileInput.click());
 
 if (fileInput) {
-    fileInput.addEventListener('change', (e) => {
-        Array.from(e.target.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                attachedFiles.push({ name: file.name, type: file.type, size: file.size, content: event.target.result });
-                renderUploadedFiles();
-            };
-            if (file.type.startsWith('text/') || file.name.endsWith('.txt')) reader.readAsText(file);
-            else reader.readAsDataURL(file);
-        });
+    fileInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        for (const file of files) {
+            // Show placeholder while extracting
+            const placeholder = { name: file.name, type: file.type, size: file.size, kind: 'loading', content: null };
+            attachedFiles.push(placeholder);
+            renderUploadedFiles();
+            try {
+                const extracted = await readFileContent(file);
+                const idx = attachedFiles.indexOf(placeholder);
+                if (idx !== -1) attachedFiles[idx] = extracted;
+            } catch (err) {
+                const idx = attachedFiles.indexOf(placeholder);
+                if (idx !== -1) attachedFiles[idx] = { name: file.name, type: file.type, size: file.size, kind: 'error', content: null };
+            }
+            renderUploadedFiles();
+        }
         fileInput.value = '';
     });
 }
 
+// ===== FILE READING & EXTRACTION =====
+function readAsText(file)        { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsText(file); }); }
+function readAsDataURL(file)     { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(file); }); }
+function readAsArrayBuffer(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsArrayBuffer(file); }); }
+
+async function readFileContent(file) {
+    const base = { name: file.name, type: file.type, size: file.size };
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    // ----- Images -----
+    if (file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) {
+        const dataUrl = await readAsDataURL(file);
+        const info = await getImageDimensions(dataUrl);
+        return { ...base, kind: 'image', content: dataUrl, preview: dataUrl,
+                 description: `Image ${file.name} — ${info.width}×${info.height}px` };
+    }
+
+    // ----- Plain text / CSV -----
+    if (file.type.startsWith('text/') || ['txt','csv','md','json','xml','html','js','ts','py','java','c','cpp','css'].includes(ext)) {
+        const text = await readAsText(file);
+        return { ...base, kind: 'text', content: text, description: `Texte (${text.split('\n').length} lignes)` };
+    }
+
+    // ----- PDF -----
+    if (file.type === 'application/pdf' || ext === 'pdf') {
+        const text = await extractPDFText(file);
+        return { ...base, kind: 'text', content: text, description: `PDF extrait (${text.split('\n').length} lignes)` };
+    }
+
+    // ----- Excel -----
+    if (['xlsx','xls','ods'].includes(ext) || file.type.includes('spreadsheet') || file.type.includes('excel')) {
+        const text = await extractExcelText(file);
+        return { ...base, kind: 'text', content: text, description: `Tableau extrait` };
+    }
+
+    // ----- Word -----
+    if (['docx'].includes(ext) || file.type.includes('wordprocessingml')) {
+        const text = await extractWordText(file);
+        return { ...base, kind: 'text', content: text, description: `Document extrait (${text.split('\n').length} lignes)` };
+    }
+
+    // ----- Fallback: try as text -----
+    try {
+        const text = await readAsText(file);
+        return { ...base, kind: 'text', content: text };
+    } catch {
+        return { ...base, kind: 'binary', content: null, description: 'Fichier binaire non lisible' };
+    }
+}
+
+function getImageDimensions(dataUrl) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror  = () => resolve({ width: 0, height: 0 });
+        img.src = dataUrl;
+    });
+}
+
+async function extractPDFText(file) {
+    if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js non chargé');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const buffer = await readAsArrayBuffer(file);
+    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    const pages = [];
+    const maxPages = Math.min(pdf.numPages, 80);
+    for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const lineMap = {};
+        content.items.forEach(item => {
+            const y = Math.round(item.transform[5]);
+            lineMap[y] = (lineMap[y] || '') + item.str + ' ';
+        });
+        const pageText = Object.keys(lineMap).sort((a,b) => b-a).map(y => lineMap[y].trim()).join('\n');
+        pages.push(`--- Page ${i} ---\n${pageText}`);
+    }
+    if (pdf.numPages > maxPages) pages.push(`[${pdf.numPages - maxPages} page(s) supplémentaire(s) tronquée(s)]`);
+    return pages.join('\n\n');
+}
+
+async function extractExcelText(file) {
+    if (typeof XLSX === 'undefined') throw new Error('SheetJS non chargé');
+    const buffer = await readAsArrayBuffer(file);
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    return workbook.SheetNames.map(name => {
+        const sheet = workbook.Sheets[name];
+        return `=== Feuille : ${name} ===\n${XLSX.utils.sheet_to_csv(sheet)}`;
+    }).join('\n\n');
+}
+
+async function extractWordText(file) {
+    if (typeof mammoth === 'undefined') throw new Error('mammoth.js non chargé');
+    const buffer = await readAsArrayBuffer(file);
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    return result.value;
+}
+
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
-    return { txt:'📄', pdf:'📕', doc:'📘', docx:'📘', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️', xlsx:'📊', xls:'📊', csv:'📊' }[ext] || '📎';
+    return { txt:'📄', pdf:'📕', doc:'📘', docx:'📘', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️', webp:'🖼️', xlsx:'📊', xls:'📊', csv:'📊', json:'📋', md:'📝' }[ext] || '📎';
 }
 
 function formatFileSize(bytes) {
@@ -216,13 +321,35 @@ function renderUploadedFiles() {
     uploadedFilesDiv.innerHTML = '';
     attachedFiles.forEach((file, index) => {
         const fileEl = document.createElement('div');
-        fileEl.className = 'uploaded-file';
-        fileEl.innerHTML = `
-            <span class="file-icon">${getFileIcon(file.name)}</span>
-            <span class="file-name" title="${file.name}">${file.name}</span>
-            <span style="color:#999;font-size:0.85em;margin-left:8px">${formatFileSize(file.size)}</span>
-            <span class="remove-file" onclick="removeFile(${index})">x</span>
-        `;
+        fileEl.className = 'uploaded-file' + (file.kind === 'loading' ? ' file-loading' : '');
+
+        if (file.kind === 'image' && file.preview) {
+            fileEl.innerHTML = `
+                <img src="${file.preview}" class="file-thumb" alt="${file.name}">
+                <div class="file-info">
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                    <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
+                </div>
+                <span class="remove-file" onclick="removeFile(${index})">×</span>
+            `;
+        } else {
+            const statusBadge = file.kind === 'loading'
+                ? '<span class="file-badge extracting">extraction…</span>'
+                : file.kind === 'text' && file.description
+                ? `<span class="file-badge ok">✓ analysable</span>`
+                : file.kind === 'error'
+                ? '<span class="file-badge err">erreur</span>'
+                : '';
+            fileEl.innerHTML = `
+                <span class="file-icon">${getFileIcon(file.name)}</span>
+                <div class="file-info">
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                    <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
+                </div>
+                ${statusBadge}
+                <span class="remove-file" onclick="removeFile(${index})">×</span>
+            `;
+        }
         uploadedFilesDiv.appendChild(fileEl);
     });
 }
@@ -546,19 +673,52 @@ function buildSystemPrompt() {
 async function getGroqAIResponse(message) {
     try {
         const conv = getCurrentConversation();
-        let fullMessage = message;
+        if (!conv.history) conv.history = [];
 
-        if (attachedFiles.length > 0) {
-            fullMessage += '\n\n[Fichiers joints:]\n';
-            attachedFiles.forEach(file => {
-                fullMessage += `\nFichier: ${file.name} (${formatFileSize(file.size)})\n`;
-                if (file.type.startsWith('text/') || file.name.endsWith('.txt')) fullMessage += `Contenu:\n${file.content}\n`;
-                else fullMessage += `Type: ${file.type}\n`;
+        const images   = attachedFiles.filter(f => f.kind === 'image');
+        const textFiles = attachedFiles.filter(f => f.kind === 'text' || f.kind === 'binary');
+
+        // Build text portion of the message
+        let textPart = message || '';
+        if (textFiles.length > 0) {
+            textPart += '\n\n';
+            textFiles.forEach(f => {
+                textPart += `\n[Fichier joint : ${f.name} (${formatFileSize(f.size)})]\n`;
+                if (f.content) {
+                    // Truncate very large files to ~15k chars to avoid token limits
+                    const preview = f.content.length > 15000
+                        ? f.content.substring(0, 15000) + `\n[... ${f.content.length - 15000} caractères tronqués]`
+                        : f.content;
+                    textPart += `Contenu :\n${preview}\n`;
+                } else {
+                    textPart += `Type : ${f.type} (contenu non extractible)\n`;
+                }
             });
         }
 
-        if (!conv.history) conv.history = [];
-        conv.history.push({ role: 'user', content: fullMessage });
+        // Build content: multimodal array if images, plain string otherwise
+        let currentContent;
+        let historyEntry;
+        if (images.length > 0) {
+            const parts = [{ type: 'text', text: textPart || 'Analyse ces fichiers' }];
+            images.forEach(img => {
+                parts.push({ type: 'image_url', image_url: { url: img.content } });
+            });
+            currentContent = parts;
+            // History keeps a text-only representation (base64 is too large to store)
+            historyEntry = textPart + images.map(img => `\n[Image jointe : ${img.name} — ${img.description || ''}]`).join('');
+        } else {
+            currentContent = textPart || 'Analyse ces fichiers';
+            historyEntry = currentContent;
+        }
+
+        conv.history.push({ role: 'user', content: historyEntry });
+
+        // Build the messages array: history uses stored text, but the last user turn uses full multimodal content
+        const historyForAPI = conv.history.slice(0, -1).map(m => ({
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content : m.content
+        }));
 
         currentFetch = new AbortController();
         const response = await fetch(`${API_BASE}/chat`, {
@@ -567,11 +727,9 @@ async function getGroqAIResponse(message) {
             signal: currentFetch.signal,
             body: JSON.stringify({
                 messages: [
-                    {
-                        role: 'system',
-                        content: buildSystemPrompt()
-                    },
-                    ...conv.history
+                    { role: 'system', content: buildSystemPrompt() },
+                    ...historyForAPI,
+                    { role: 'user', content: currentContent }
                 ]
             })
         });
