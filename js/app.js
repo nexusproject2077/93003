@@ -220,7 +220,9 @@ async function readFileContent(file) {
     if (file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) {
         const dataUrl = await readAsDataURL(file);
         const info = await getImageDimensions(dataUrl);
-        return { ...base, kind: 'image', content: dataUrl, preview: dataUrl,
+        // Compress to avoid 413 Payload Too Large
+        const compressed = await compressImage(dataUrl, 1024, 0.75);
+        return { ...base, kind: 'image', content: compressed, preview: dataUrl,
                  description: `Image ${file.name} — ${info.width}×${info.height}px` };
     }
 
@@ -262,6 +264,29 @@ function getImageDimensions(dataUrl) {
         const img = new Image();
         img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
         img.onerror  = () => resolve({ width: 0, height: 0 });
+        img.src = dataUrl;
+    });
+}
+
+
+// ===== COMPRESSION IMAGE =====
+function compressImage(dataUrl, maxWidth = 1024, quality = 0.75) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.naturalWidth;
+            let h = img.naturalHeight;
+            if (w > maxWidth) {
+                h = Math.round((h * maxWidth) / w);
+                w = maxWidth;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width  = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(dataUrl); // fallback
         img.src = dataUrl;
     });
 }
