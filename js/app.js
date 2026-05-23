@@ -204,34 +204,34 @@ if (fileInput) {
             const ext = file.name.split('.').pop().toLowerCase();
             const isImage = file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext);
 
-            // For images: show thumbnail immediately, then update once BLIP finishes
             if (isImage) {
+                // Afficher miniature immédiatement, analyser en arrière-plan
                 const dataUrl = await readAsDataURL(file);
                 const info    = await getImageDimensions(dataUrl);
-                // Partial entry — thumbnail visible, content still loading
-                const partial = { name: file.name, type: file.type, size: file.size,
-                                  kind: 'image', preview: dataUrl, content: null,
-                                  description: `${info.width}×${info.height}px · analyse en cours…` };
+                const partial = {
+                    name: file.name, type: file.type, size: file.size,
+                    kind: 'image', preview: dataUrl, content: null,
+                    description: `${info.width}x${info.height}px · analyse en cours…`
+                };
                 attachedFiles.push(partial);
                 renderUploadedFiles();
-                // Finish analysis in background
+
                 try {
                     const colors  = await analyzeImageColors(dataUrl);
                     const caption = await captionImageWithHF(dataUrl, file.type);
-                    let content = `[Image jointe : ${file.name}]\nDimensions : ${info.width}×${info.height}px\nLuminosité : ${colors.luminosityLabel} (${colors.brightness}/255)\nCouleur dominante : ${colors.avgColor}`;
+                    let content = `[Image jointe : ${file.name}]\nDimensions : ${info.width}x${info.height}px\nLuminosite : ${colors.luminosityLabel} (${colors.brightness}/255)\nCouleur dominante : ${colors.avgColor}`;
                     if (caption) content += `\n\nDescription du contenu :\n${caption}`;
                     const desc = caption
-                        ? `${info.width}×${info.height}px · "${caption.substring(0, 60)}${caption.length > 60 ? '…' : ''}"`
-                        : `${info.width}×${info.height}px · analyse visuelle`;
-                    partial.content = content;
+                        ? `${info.width}x${info.height}px - "${caption.substring(0, 60)}${caption.length > 60 ? '...' : ''}"`
+                        : `${info.width}x${info.height}px - analyse visuelle`;
+                    partial.content     = content;
                     partial.description = desc;
                 } catch {
-                    partial.content = `[Image : ${file.name}]\nDimensions : ${info.width}×${info.height}px`;
-                    partial.description = `${info.width}×${info.height}px`;
+                    partial.content     = `[Image : ${file.name}]\nDimensions : ${info.width}x${info.height}px`;
+                    partial.description = `${info.width}x${info.height}px`;
                 }
                 renderUploadedFiles();
             } else {
-                // Non-image: show loading placeholder then extract
                 const placeholder = { name: file.name, type: file.type, size: file.size, kind: 'loading', content: null };
                 attachedFiles.push(placeholder);
                 renderUploadedFiles();
@@ -259,6 +259,7 @@ async function readFileContent(file) {
     const base = { name: file.name, type: file.type, size: file.size };
     const ext = file.name.split('.').pop().toLowerCase();
 
+ claude/parameter-configuration-goiQL
     if (file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) {
         const dataUrl = await readAsDataURL(file);
         const info    = await getImageDimensions(dataUrl);
@@ -278,6 +279,7 @@ async function readFileContent(file) {
         return { ...base, kind: 'image', content, preview: dataUrl, description: desc };
     }
 
+ main
     if (file.type.startsWith('text/') || ['txt','csv','md','json','xml','html','js','ts','py','java','c','cpp','css'].includes(ext)) {
         const text = await readAsText(file);
         return { ...base, kind: 'text', content: text, description: `Texte (${text.split('\n').length} lignes)` };
@@ -311,6 +313,7 @@ function getImageDimensions(dataUrl) {
         const img = new Image();
         img.onload  = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
         img.onerror = () => resolve({ width: 0, height: 0 });
+ claude/parameter-configuration-goiQL
         img.src = dataUrl;
     });
 }
@@ -328,6 +331,7 @@ function compressImage(dataUrl, maxWidth = 1024, quality = 0.75) {
             resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.onerror = () => resolve(dataUrl);
+main
         img.src = dataUrl;
     });
 }
@@ -372,7 +376,6 @@ function dataURLtoBlob(dataUrl) {
 async function captionImageWithHF(dataUrl, mimeType) {
     try {
         const blob = dataURLtoBlob(dataUrl);
-        // Try up to 2 attempts (model may be loading on first try → 503)
         for (let attempt = 0; attempt < 2; attempt++) {
             const res = await fetch(
                 'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large',
@@ -383,7 +386,6 @@ async function captionImageWithHF(dataUrl, mimeType) {
                 return (Array.isArray(json) ? json[0]?.generated_text : json?.generated_text) || null;
             }
             if (res.status === 503 && attempt === 0) {
-                // Model warming up — wait 4s and retry once
                 await new Promise(r => setTimeout(r, 4000));
                 continue;
             }
@@ -449,9 +451,10 @@ function renderUploadedFiles() {
     attachedFiles.forEach((file, index) => {
         const fileEl = document.createElement('div');
         fileEl.className = 'uploaded-file' + (file.kind === 'loading' ? ' file-loading' : '');
+
         if (file.kind === 'image' && file.preview) {
             const badge = file.content
-                ? '<span class="file-badge ok">✓ analysable</span>'
+                ? '<span class="file-badge ok">analysable</span>'
                 : '<span class="file-badge extracting">analyse IA…</span>';
             fileEl.innerHTML = `
                 <img src="${file.preview}" class="file-thumb" alt="${file.name}">
@@ -460,13 +463,22 @@ function renderUploadedFiles() {
                     <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
                 </div>
                 ${badge}
+ claude/parameter-configuration-goiQL
                 <span class="remove-file" onclick="removeFile(${index})">×</span>
+
+                <span class="remove-file" onclick="removeFile(${index})">x</span>
+main
             `;
         } else {
             const statusBadge = file.kind === 'loading'
                 ? '<span class="file-badge extracting">extraction…</span>'
+ claude/parameter-configuration-goiQL
                 : (file.kind === 'text' || file.kind === 'image') && file.content
                 ? '<span class="file-badge ok">✓ analysable</span>'
+
+                : (file.kind === 'text') && file.content
+                ? '<span class="file-badge ok">analysable</span>'
+ main
                 : file.kind === 'error'
                 ? '<span class="file-badge err">erreur</span>'
                 : '';
@@ -883,6 +895,9 @@ async function getGroqAIResponse(message, searchContext = null) {
         const conv = getCurrentConversation();
         if (!conv.history) conv.history = [];
 
+ claude/parameter-configuration-goiQL
+        // Tous les fichiers envoient leur contenu texte (images: description BLIP)
+ main
         let fullMessage = message || '';
 
         if (searchContext) {
@@ -894,11 +909,15 @@ async function getGroqAIResponse(message, searchContext = null) {
                 fullMessage += `\n\n[Fichier joint : ${f.name} (${formatFileSize(f.size)})]\n`;
                 if (f.content && f.kind !== 'binary') {
                     const preview = f.content.length > 15000
+ claude/parameter-configuration-goiQL
                         ? f.content.substring(0, 15000) + `\n[… ${f.content.length - 15000} caractères tronqués]`
+
+                        ? f.content.substring(0, 15000) + `\n[... ${f.content.length - 15000} caracteres tronques]`
+ main
                         : f.content;
                     fullMessage += preview + '\n';
                 } else {
-                    fullMessage += `Type : ${f.type} · non analysable\n`;
+                    fullMessage += `Type : ${f.type} - non analysable\n`;
                 }
             });
         }
