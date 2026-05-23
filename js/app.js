@@ -200,7 +200,6 @@ if (fileInput) {
     fileInput.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files);
         for (const file of files) {
- claude/parameter-configuration-goiQL
             const ext = file.name.split('.').pop().toLowerCase();
             const isImage = file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext);
 
@@ -244,18 +243,6 @@ if (fileInput) {
                     if (idx !== -1) attachedFiles[idx] = { name: file.name, type: file.type, size: file.size, kind: 'error', content: null };
                 }
                 renderUploadedFiles();
-
-            const placeholder = { name: file.name, type: file.type, size: file.size, kind: 'loading', content: null };
-            attachedFiles.push(placeholder);
-            renderUploadedFiles();
-            try {
-                const extracted = await readFileContent(file);
-                const idx = attachedFiles.indexOf(placeholder);
-                if (idx !== -1) attachedFiles[idx] = extracted;
-            } catch (err) {
-                const idx = attachedFiles.indexOf(placeholder);
-                if (idx !== -1) attachedFiles[idx] = { name: file.name, type: file.type, size: file.size, kind: 'error', content: null };
- main
             }
         }
         fileInput.value = '';
@@ -273,7 +260,6 @@ async function readFileContent(file) {
 
     if (file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) {
         const dataUrl = await readAsDataURL(file);
- claude/parameter-configuration-goiQL
         const info    = await getImageDimensions(dataUrl);
         const colors  = await analyzeImageColors(dataUrl);
 
@@ -289,12 +275,6 @@ async function readFileContent(file) {
             : `${info.width}×${info.height}px · analyse visuelle`;
 
         return { ...base, kind: 'image', content, preview: dataUrl, description: desc };
-
-        const info = await getImageDimensions(dataUrl);
-        const compressed = await compressImage(dataUrl, 1024, 0.75);
-        return { ...base, kind: 'image', content: compressed, preview: dataUrl,
-                 description: `Image ${file.name} — ${info.width}x${info.height}px` };
- main
     }
 
     if (file.type.startsWith('text/') || ['txt','csv','md','json','xml','html','js','ts','py','java','c','cpp','css'].includes(ext)) {
@@ -328,11 +308,7 @@ async function readFileContent(file) {
 function getImageDimensions(dataUrl) {
     return new Promise(resolve => {
         const img = new Image();
- claude/parameter-configuration-goiQL
         img.onload  = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-        img.onerror = () => resolve({ width: 0, height: 0 });
-
-        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
         img.onerror = () => resolve({ width: 0, height: 0 });
         img.src = dataUrl;
     });
@@ -351,7 +327,6 @@ function compressImage(dataUrl, maxWidth = 1024, quality = 0.75) {
             resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.onerror = () => resolve(dataUrl);
- main
         img.src = dataUrl;
     });
 }
@@ -483,7 +458,6 @@ function renderUploadedFiles() {
                     <span class="file-name" title="${file.name}">${file.name}</span>
                     <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
                 </div>
-claude/parameter-configuration-goiQL
                 ${badge}
                 <span class="remove-file" onclick="removeFile(${index})">×</span>
             `;
@@ -492,15 +466,6 @@ claude/parameter-configuration-goiQL
                 ? '<span class="file-badge extracting">extraction…</span>'
                 : (file.kind === 'text' || file.kind === 'image') && file.content
                 ? '<span class="file-badge ok">✓ analysable</span>'
-
-                <span class="remove-file" onclick="removeFile(${index})">x</span>
-            `;
-        } else {
-            const statusBadge = file.kind === 'loading'
-                ? '<span class="file-badge extracting">extraction...</span>'
-                : file.kind === 'text' && file.description
-                ? '<span class="file-badge ok">analysable</span>'
- main
                 : file.kind === 'error'
                 ? '<span class="file-badge err">erreur</span>'
                 : '';
@@ -511,7 +476,7 @@ claude/parameter-configuration-goiQL
                     <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
                 </div>
                 ${statusBadge}
-                <span class="remove-file" onclick="removeFile(${index})">x</span>
+                <span class="remove-file" onclick="removeFile(${index})">×</span>
             `;
         }
         uploadedFilesDiv.appendChild(fileEl);
@@ -815,39 +780,120 @@ function buildSystemPrompt() {
     if (s.emojis === 'less') prompt += " N'utilise pas d'emojis.";
     if (s.contentFilter || s.safeMode) prompt += ' Filtre tout contenu inapproprie.';
     if (s.instructions) prompt += '\n\nInstructions personnalisees : ' + s.instructions;
+    if (s.webSearch) prompt += '\n\nDes résultats de recherche web peuvent être fournis avant ta question. Utilise-les pour donner des réponses précises et à jour. Cite toujours les sources avec leur URL.';
     prompt += "\n\nIMPORTANT: Tu PEUX analyser tous les fichiers. Tu peux utiliser le formatage Markdown.";
     return prompt;
 }
 
+// ===== RECHERCHE WEB =====
+async function webSearch(query) {
+    const s = loadSettings();
+    const provider = s.webSearchProvider || 'tavily';
+    const key = s.webSearchKey || '';
+    const maxResults = parseInt(s.webSearchMaxResults) || 5;
+
+    if (!key) throw new Error('Clé API manquante — configurez-la dans Paramètres › Applications');
+
+    if (provider === 'tavily') {
+        const res = await fetch('https://api.tavily.com/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: key, query, max_results: maxResults, search_depth: 'basic', include_answer: false })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Tavily erreur ${res.status}`);
+        }
+        const data = await res.json();
+        return (data.results || []).map(r => ({ title: r.title, url: r.url, snippet: r.content }));
+    }
+
+    if (provider === 'brave') {
+        const res = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${maxResults}`, {
+            headers: { 'Accept': 'application/json', 'X-Subscription-Token': key }
+        });
+        if (!res.ok) throw new Error(`Brave erreur ${res.status}`);
+        const data = await res.json();
+        return (data.web?.results || []).map(r => ({ title: r.title, url: r.url, snippet: r.description }));
+    }
+
+    throw new Error('Fournisseur inconnu');
+}
+
+function shouldSearchWeb(message) {
+    const s = loadSettings();
+    if (!s.webSearch || !s.webSearchKey) return false;
+    if (s.webSearchMode === 'always') return true;
+    if (s.webSearchMode === 'never') return false;
+    const lower = message.toLowerCase();
+    return lower.includes('?') ||
+        /\b(qui est|qu.est|c.est quoi|comment|pourquoi|quand|o[uù]|quelle? est|actualit|r[eé]cent|aujourd|maintenant|m[eé]t[eé]o|prix|cours|vrai(ment)?|v[eé]rifi|source|prouve|confirme|cherche|recherche|trouve|d[eé]finit|explique)\b/.test(lower);
+}
+
+function formatSearchResults(results) {
+    if (!results || !results.length) return null;
+    let ctx = '[Résultats de recherche web — informations actuelles]\n\n';
+    results.forEach((r, i) => {
+        ctx += `Source ${i + 1} : ${r.title}\nURL : ${r.url}\n${r.snippet || ''}\n\n`;
+    });
+    ctx += 'Utilise ces sources pour répondre précisément. Cite les URLs pertinentes dans ta réponse.';
+    return ctx;
+}
+
+function showSearchIndicator() {
+    const el = document.createElement('div');
+    el.id = 'search-indicator';
+    el.className = 'search-indicator';
+    el.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Recherche web en cours…</span>';
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function hideSearchIndicator() {
+    const el = document.getElementById('search-indicator');
+    if (el) el.remove();
+}
+
+function showWebSources(sources) {
+    if (!sources || !sources.length) return;
+    const el = document.createElement('div');
+    el.className = 'web-sources';
+    const items = sources.map(s => {
+        let hostname = '';
+        try { hostname = new URL(s.url).hostname; } catch {}
+        return `<a href="${s.url}" target="_blank" rel="noopener" class="source-item" title="${(s.snippet || '').replace(/"/g, '')}">
+            <img class="source-favicon" src="https://www.google.com/s2/favicons?domain=${hostname}&sz=16" onerror="this.style.display='none'" width="14" height="14">
+            <span class="source-title">${s.title}</span>
+        </a>`;
+    }).join('');
+    el.innerHTML = `
+        <div class="sources-header">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Sources web
+        </div>
+        <div class="sources-list">${items}</div>`;
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
 // ===== API GROQ =====
-async function getGroqAIResponse(message) {
+async function getGroqAIResponse(message, searchContext = null) {
     try {
         const conv = getCurrentConversation();
         if (!conv.history) conv.history = [];
 
- claude/parameter-configuration-goiQL
-        // Build the full text message — all file types (images included) send their
-        // extracted text content; base64 is never forwarded to the backend.
         let fullMessage = message || '';
+
+        if (searchContext) {
+            fullMessage = searchContext + '\n\n---\n\nQuestion : ' + fullMessage;
+        }
+
         if (attachedFiles.length > 0) {
             attachedFiles.forEach(f => {
                 fullMessage += `\n\n[Fichier joint : ${f.name} (${formatFileSize(f.size)})]\n`;
                 if (f.content && f.kind !== 'binary') {
                     const preview = f.content.length > 15000
                         ? f.content.substring(0, 15000) + `\n[… ${f.content.length - 15000} caractères tronqués]`
-
-        const images    = attachedFiles.filter(f => f.kind === 'image');
-        const textFiles = attachedFiles.filter(f => f.kind === 'text' || f.kind === 'binary');
-
-        let textPart = message || '';
-        if (textFiles.length > 0) {
-            textPart += '\n\n';
-            textFiles.forEach(f => {
-                textPart += `\n[Fichier joint : ${f.name} (${formatFileSize(f.size)})]\n`;
-                if (f.content) {
-                    const preview = f.content.length > 15000
-                        ? f.content.substring(0, 15000) + `\n[... ${f.content.length - 15000} caracteres tronques]`
- main
                         : f.content;
                     fullMessage += preview + '\n';
                 } else {
@@ -856,30 +902,7 @@ async function getGroqAIResponse(message) {
             });
         }
 
- claude/parameter-configuration-goiQL
         conv.history.push({ role: 'user', content: fullMessage || 'Analyse ces fichiers' });
-
-        let currentContent;
-        let historyEntry;
-        if (images.length > 0) {
-            const parts = [{ type: 'text', text: textPart || 'Analyse ces fichiers' }];
-            images.forEach(img => {
-                parts.push({ type: 'image_url', image_url: { url: img.content } });
-            });
-            currentContent = parts;
-            historyEntry = textPart + images.map(img => `\n[Image jointe : ${img.name}]`).join('');
-        } else {
-            currentContent = textPart || 'Analyse ces fichiers';
-            historyEntry = currentContent;
-        }
-
-        conv.history.push({ role: 'user', content: historyEntry });
-
-        const historyForAPI = conv.history.slice(0, -1).map(m => ({
-            role: m.role,
-            content: typeof m.content === 'string' ? m.content : m.content
-        }));
-main
 
         currentFetch = new AbortController();
         const response = await fetch(`${API_BASE}/chat`, {
@@ -947,10 +970,28 @@ async function handleMessage() {
         navigator.clipboard.writeText(ticket).catch(console.error);
     } else {
         toggleStopButton(true);
+
+        let searchContext = null;
+        let searchSources = [];
+        if (shouldSearchWeb(message)) {
+            showSearchIndicator();
+            try {
+                const results = await webSearch(message);
+                searchSources = results;
+                searchContext = formatSearchResults(results);
+            } catch (e) {
+                showToast('Recherche web : ' + (e.message || 'Erreur'), 'error', 4000);
+            }
+            hideSearchIndicator();
+        }
+
         showTypingIndicator();
-        const aiResponse = await getGroqAIResponse(message || 'Analyse ces fichiers');
+        const aiResponse = await getGroqAIResponse(message || 'Analyse ces fichiers', searchContext);
         hideTypingIndicator();
-        if (aiResponse) await addMessage('bot-message', aiResponse, true, true);
+        if (aiResponse) {
+            await addMessage('bot-message', aiResponse, true, true);
+            if (searchSources.length > 0) showWebSources(searchSources);
+        }
         sendButton.disabled = false;
         userInput.disabled  = false;
         userInput.focus();
@@ -998,6 +1039,7 @@ const defaultSettings = {
     lists: 'default', emojis: 'default', quickReplies: true, instructions: '',
     alias: '', profession: '', about: '', memory: false, modelImprove: true,
     twoFA: false, contentFilter: false, safeMode: false, enterSend: true,
+    webSearch: false, webSearchProvider: 'tavily', webSearchKey: '', webSearchMaxResults: 5, webSearchMode: 'auto',
 };
 
 function loadSettings() {
@@ -1089,9 +1131,14 @@ function readSettingsFromDOM() {
         memory:        g('s-memory')?.checked ?? defaultSettings.memory,
         modelImprove:  g('s-model-improve')?.checked ?? defaultSettings.modelImprove,
         twoFA:         g('s-2fa')?.checked ?? defaultSettings.twoFA,
-        contentFilter: g('s-content-filter')?.checked ?? defaultSettings.contentFilter,
-        safeMode:      g('s-safe-mode')?.checked ?? defaultSettings.safeMode,
-        enterSend:     g('s-enter-send')?.checked ?? defaultSettings.enterSend,
+        contentFilter:       g('s-content-filter')?.checked ?? defaultSettings.contentFilter,
+        safeMode:            g('s-safe-mode')?.checked ?? defaultSettings.safeMode,
+        enterSend:           g('s-enter-send')?.checked ?? defaultSettings.enterSend,
+        webSearch:           g('s-web-search')?.checked ?? defaultSettings.webSearch,
+        webSearchProvider:   g('s-web-search-provider')?.value || defaultSettings.webSearchProvider,
+        webSearchKey:        g('s-web-search-key')?.value || '',
+        webSearchMaxResults: parseInt(g('s-web-search-max')?.value ?? defaultSettings.webSearchMaxResults),
+        webSearchMode:       g('s-web-search-mode')?.value || defaultSettings.webSearchMode,
     };
 }
 
@@ -1113,6 +1160,11 @@ function populateSettingsDOM(s) {
     check('s-memory', s.memory); check('s-model-improve', s.modelImprove);
     check('s-2fa', s.twoFA); check('s-content-filter', s.contentFilter);
     check('s-safe-mode', s.safeMode); check('s-enter-send', s.enterSend);
+    check('s-web-search', s.webSearch);
+    set('s-web-search-provider', s.webSearchProvider);
+    set('s-web-search-key', s.webSearchKey);
+    set('s-web-search-max', s.webSearchMaxResults);
+    set('s-web-search-mode', s.webSearchMode);
     updateSliderLabel();
     updateColorDot();
 }
