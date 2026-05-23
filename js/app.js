@@ -259,7 +259,6 @@ async function readFileContent(file) {
     const base = { name: file.name, type: file.type, size: file.size };
     const ext = file.name.split('.').pop().toLowerCase();
 
- claude/parameter-configuration-goiQL
     if (file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) {
         const dataUrl = await readAsDataURL(file);
         const info    = await getImageDimensions(dataUrl);
@@ -279,7 +278,6 @@ async function readFileContent(file) {
         return { ...base, kind: 'image', content, preview: dataUrl, description: desc };
     }
 
- main
     if (file.type.startsWith('text/') || ['txt','csv','md','json','xml','html','js','ts','py','java','c','cpp','css'].includes(ext)) {
         const text = await readAsText(file);
         return { ...base, kind: 'text', content: text, description: `Texte (${text.split('\n').length} lignes)` };
@@ -313,7 +311,6 @@ function getImageDimensions(dataUrl) {
         const img = new Image();
         img.onload  = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
         img.onerror = () => resolve({ width: 0, height: 0 });
- claude/parameter-configuration-goiQL
         img.src = dataUrl;
     });
 }
@@ -331,7 +328,6 @@ function compressImage(dataUrl, maxWidth = 1024, quality = 0.75) {
             resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.onerror = () => resolve(dataUrl);
-main
         img.src = dataUrl;
     });
 }
@@ -463,22 +459,13 @@ function renderUploadedFiles() {
                     <span class="file-meta">${file.description || formatFileSize(file.size)}</span>
                 </div>
                 ${badge}
- claude/parameter-configuration-goiQL
                 <span class="remove-file" onclick="removeFile(${index})">×</span>
-
-                <span class="remove-file" onclick="removeFile(${index})">x</span>
-main
             `;
         } else {
             const statusBadge = file.kind === 'loading'
                 ? '<span class="file-badge extracting">extraction…</span>'
- claude/parameter-configuration-goiQL
                 : (file.kind === 'text' || file.kind === 'image') && file.content
                 ? '<span class="file-badge ok">✓ analysable</span>'
-
-                : (file.kind === 'text') && file.content
-                ? '<span class="file-badge ok">analysable</span>'
- main
                 : file.kind === 'error'
                 ? '<span class="file-badge err">erreur</span>'
                 : '';
@@ -895,9 +882,7 @@ async function getGroqAIResponse(message, searchContext = null) {
         const conv = getCurrentConversation();
         if (!conv.history) conv.history = [];
 
- claude/parameter-configuration-goiQL
         // Tous les fichiers envoient leur contenu texte (images: description BLIP)
- main
         let fullMessage = message || '';
 
         if (searchContext) {
@@ -909,11 +894,7 @@ async function getGroqAIResponse(message, searchContext = null) {
                 fullMessage += `\n\n[Fichier joint : ${f.name} (${formatFileSize(f.size)})]\n`;
                 if (f.content && f.kind !== 'binary') {
                     const preview = f.content.length > 15000
- claude/parameter-configuration-goiQL
-                        ? f.content.substring(0, 15000) + `\n[… ${f.content.length - 15000} caractères tronqués]`
-
                         ? f.content.substring(0, 15000) + `\n[... ${f.content.length - 15000} caracteres tronques]`
- main
                         : f.content;
                     fullMessage += preview + '\n';
                 } else {
