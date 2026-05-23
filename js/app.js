@@ -782,6 +782,7 @@ function buildSystemPrompt() {
     if (s.instructions) prompt += '\n\nInstructions personnalisees : ' + s.instructions;
     if (s.webSearch) prompt += '\n\nDes résultats de recherche web peuvent être fournis avant ta question. Utilise-les pour donner des réponses précises et à jour. Cite toujours les sources avec leur URL.';
     prompt += "\n\nIMPORTANT: Tu PEUX analyser tous les fichiers. Tu peux utiliser le formatage Markdown.";
+    prompt += buildMemoryContext();
     return prompt;
 }
 
@@ -935,6 +936,12 @@ async function getGroqAIResponse(message, searchContext = null) {
         attachedFiles = [];
         renderUploadedFiles();
 
+        // Extraction mémoire en arrière-plan (silencieux)
+        const s = loadSettings();
+        if (s.memory !== false) {
+            extractAndSaveMemory(message || '', aiResponse).catch(() => {});
+        }
+
         return aiResponse;
     } catch (error) {
         if (error.name === 'AbortError') return '';
@@ -1032,6 +1039,7 @@ if (getToken()) {
 // ===== SETTINGS =====
 const SETTINGS_KEY = 'nexus_settings';
 let _settingsCache = null;
+let _userMemory = [];
 
 const defaultSettings = {
     theme: 'system', contrast: 'system', accent: '#00d2ff', langue: 'auto',
@@ -1059,6 +1067,7 @@ async function loadSettingsFromServer() {
         if (!res.ok) return;
         const data = await res.json();
         _settingsCache = data.settings || {};
+        _userMemory = data.memory || [];
         if (data.sidebarState === 'hidden') sidebar.classList.add('hidden');
         else if (window.innerWidth > 768) sidebar.classList.remove('hidden');
         const s = loadSettings();
@@ -1097,6 +1106,105 @@ async function saveSidebarStateToServer(state) {
         console.error('Erreur sauvegarde sidebar:', err);
     }
 }
+
+// ===== MEMOIRE =====
+async function saveMemoryToServer(memory) {
+    try {
+        _userMemory = memory;
+        await fetch(`${API_BASE}/user/memory`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({ memory })
+        });
+    } catch (err) { console.error('Erreur sauvegarde memoire:', err); }
+}
+
+async function extractAndSaveMemory(userMessage, aiResponse) {
+    try {
+        const res = await fetch(`${API_BASE}/chat`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Tu es un extracteur de memoire. Analyse la conversation et extrait UNIQUEMENT les informations personnelles importantes sur l'utilisateur a retenir pour les prochaines conversations (prenom, profession, preferences, projets, habitudes, etc).
+
+Reponds UNIQUEMENT avec un JSON valide sous cette forme exacte :
+{"facts": ["fait 1", "fait 2"]}
+
+Si aucune info importante, reponds : {"facts": []}
+
+Sois concis, max 10 mots par fait. Ne retiens que ce qui est vraiment utile pour personaliser les futures conversations.`
+                    },
+                    {
+                        role: 'user',
+                        content: `Message utilisateur: ${userMessage}\nReponse assistant: ${aiResponse}\n\nExtrait les faits importants sur l'utilisateur.`
+                    }
+                ]
+            })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || '{"facts":[]}';
+        const clean = text.replace(/\`\`\`json|\`\`\`/g, '').trim();
+        const parsed = JSON.parse(clean);
+        const newFacts = parsed.facts || [];
+        if (newFacts.length === 0) return;
+        const updated = [..._userMemory, ...newFacts].slice(-50); // max 50 faits
+        await saveMemoryToServer(updated);
+    } catch (err) { /* silencieux */ }
+}
+
+function buildMemoryContext() {
+    if (!_userMemory || _userMemory.length === 0) return '';
+    return `\n\nMEMOIRE UTILISATEUR (infos retenues des conversations precedentes) :\n${_userMemory.map((f, i) => `- ${f}`).join('\n')}\nUtilise ces informations pour personaliser tes reponses.`;
+}
+
+window.getMemory = function() { return [..._userMemory]; };
+
+window.deleteMemoryItem = async function(index) {
+    try {
+        await fetch(`${API_BASE}/user/memory/${index}`, { method: 'DELETE', headers: authHeaders() });
+        _userMemory.splice(index, 1);
+        renderMemoryList();
+        showToast('Souvenir supprime.', 'success');
+    } catch (err) { console.error(err); }
+};
+
+function renderMemoryList() {
+    const container = document.getElementById('memory-list');
+    if (!container) return;
+    if (_userMemory.length === 0) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.25);font-size:0.8rem;text-align:center;padding:12px 0">Aucun souvenir enregistre</p>';
+        return;
+    }
+    container.innerHTML = _userMemory.map((fact, i) => `
+        <div class="memory-item">
+            <span class="memory-text">${fact}</span>
+            <button class="memory-delete" onclick="deleteMemoryItem(${i})" title="Supprimer">x</button>
+        </div>
+    `).join('');
+}
+
+window.openMemory = function() {
+    const overlay = document.getElementById('memory-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    renderMemoryList();
+};
+
+window.closeMemory = function() {
+    const overlay = document.getElementById('memory-overlay');
+    if (overlay) overlay.classList.add('hidden');
+};
+
+window.clearAllMemory = async function() {
+    if (!confirm('Effacer toute la memoire ? Cette action est irreversible.')) return;
+    await saveMemoryToServer([]);
+    renderMemoryList();
+    showToast('Memoire effacee.', 'success');
+};
 
 function saveSettings() {
     const s = readSettingsFromDOM();
