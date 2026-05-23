@@ -822,7 +822,8 @@ async function webSearch(query) {
 
 function shouldSearchWeb(message) {
     const s = loadSettings();
-    if (!s.webSearch || !s.webSearchKey) return false;
+    const key = s.webSearchKey || TAVILY_KEY;
+    if (!s.webSearch || !key) return false;
     if (s.webSearchMode === 'always') return true;
     if (s.webSearchMode === 'never') return false;
     const lower = message.toLowerCase();
