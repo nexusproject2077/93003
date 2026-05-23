@@ -926,6 +926,7 @@ async function getGroqAIResponse(message, searchContext = null) {
         }
 
         const data = await response.json();
+        console.log('BACKEND RESPONSE:', JSON.stringify(data));
         const aiResponse = data.choices[0].message.content;
 
         conv.history.push({ role: 'assistant', content: aiResponse });
