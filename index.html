@@ -506,10 +506,56 @@
                 <div class="settings-panel" id="tab-applications">
                     <h2 class="settings-title">Applications</h2>
                     <div class="settings-divider"></div>
-                    <div class="settings-empty">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                        <p>Aucune application connectée pour l'instant.</p>
-                        <button class="settings-action-btn">Parcourir les applications</button>
+
+                    <h3 class="settings-subtitle">Recherche Web</h3>
+                    <p class="settings-desc" style="padding: 8px 0 14px">Permet à Nexus AI de faire des recherches en ligne pour vérifier les sources et donner des réponses à jour.</p>
+
+                    <div class="settings-row">
+                        <div>
+                            <span class="settings-label">Activer la recherche web</span>
+                            <p class="settings-desc">L'IA cherchera sur le web avant de répondre aux questions.</p>
+                        </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="s-web-search" onchange="saveSettings()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Mode de recherche</span>
+                        <select class="settings-select" id="s-web-search-mode" onchange="saveSettings()">
+                            <option value="auto">Automatique (détection intelligente)</option>
+                            <option value="always">Toujours rechercher</option>
+                            <option value="never">Jamais (désactivé)</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Fournisseur</span>
+                        <select class="settings-select" id="s-web-search-provider" onchange="saveSettings()">
+                            <option value="tavily">Tavily (recommandé · 1000/mois gratuit)</option>
+                            <option value="brave">Brave Search (2000/mois gratuit)</option>
+                        </select>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row-col">
+                        <span class="settings-label">Clé API</span>
+                        <p class="settings-desc">Tavily : obtenez une clé sur <strong>app.tavily.com</strong> &nbsp;·&nbsp; Brave : <strong>api.search.brave.com</strong></p>
+                        <input type="password" class="settings-input" id="s-web-search-key" placeholder="Colle ta clé API ici…" oninput="saveSettings()" autocomplete="off">
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
+                    <div class="settings-row">
+                        <span class="settings-label">Nombre de résultats</span>
+                        <select class="settings-select" id="s-web-search-max" onchange="saveSettings()">
+                            <option value="3">3 sources</option>
+                            <option value="5">5 sources</option>
+                            <option value="8">8 sources</option>
+                            <option value="10">10 sources</option>
+                        </select>
                     </div>
                 </div>
 
