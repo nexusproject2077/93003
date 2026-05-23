@@ -1439,3 +1439,19 @@ window.copyCode = function(btn) {
         setTimeout(() => { btn.textContent = 'Copier'; btn.classList.remove('copied'); }, 1800);
     }).catch(() => {});
 };
+
+// ===== LIQUID GLASS HEADER SCROLL EFFECT =====
+(function() {
+    const chatBox = document.getElementById('chat-box');
+    const header  = document.getElementById('nexus-header');
+    if (!header) return;
+
+    function onScroll() {
+        const scrolled = chatBox ? chatBox.scrollTop > 10 : window.scrollY > 10;
+        header.classList.toggle('scrolled', scrolled);
+    }
+
+    if (chatBox) chatBox.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // état initial
+})();
