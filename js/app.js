@@ -1,6 +1,7 @@
 // ===== CONFIGURATION =====
 const API_BASE = 'https://api.mmi25b11.mmi-troyes.fr';
 const TYPING_SPEED = 15;
+const TAVILY_KEY = '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';
 
 // ===== AUTH =====
 function getToken() { return localStorage.getItem('nexus_token'); }
@@ -789,7 +790,7 @@ function buildSystemPrompt() {
 async function webSearch(query) {
     const s = loadSettings();
     const provider = s.webSearchProvider || 'tavily';
-    const key = s.webSearchKey || '';
+    const key = s.webSearchKey || (provider === 'tavily' ? TAVILY_KEY : '');
     const maxResults = parseInt(s.webSearchMaxResults) || 5;
 
     if (!key) throw new Error('Clé API manquante — configurez-la dans Paramètres › Applications');
@@ -1039,7 +1040,7 @@ const defaultSettings = {
     lists: 'default', emojis: 'default', quickReplies: true, instructions: '',
     alias: '', profession: '', about: '', memory: false, modelImprove: true,
     twoFA: false, contentFilter: false, safeMode: false, enterSend: true,
-    webSearch: false, webSearchProvider: 'tavily', webSearchKey: '', webSearchMaxResults: 5, webSearchMode: 'auto',
+    webSearch: true, webSearchProvider: 'tavily', webSearchKey: '', webSearchMaxResults: 5, webSearchMode: 'auto',
 };
 
 function loadSettings() {
