@@ -12,6 +12,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 </head>
 <body>
+<svg width="0" height="0" style="position: absolute; visibility: hidden;">
+  <defs>
+    <filter id="liquid-glass" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blurred" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="4" seed="2" result="turb" />
+      <feDisplacementMap in="blurred" in2="turb" scale="18" xChannelSelector="R" yChannelSelector="G" result="refracted" />
+      <feColorMatrix in="refracted" type="matrix" values="1.1 0 0 0 0
+                                                           0 1.05 0 0 0
+                                                           0 0 1.15 0 0
+                                                           0 0 0 1 0" result="saturated" />
+      <feSpecularLighting in="SourceGraphic" surfaceScale="8" specularConstant="1.2" specularExponent="12" lighting-color="#ffffff" result="highlight">
+        <fePointLight x="50" y="30" z="120" />
+      </feSpecularLighting>
+      <feComposite in="highlight" in2="saturated" operator="in" result="rim" />
+      <feBlend in="saturated" in2="rim" mode="screen" result="final" />
+    </filter>
+  </defs>
+</svg>
+
 
     <!-- ===== PAGE AUTH ===== -->
     <div id="auth-page">
