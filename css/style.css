@@ -2201,3 +2201,63 @@ kbd {
         font-size: 1.6rem;
     }
 }
+
+/* ===== LIQUID GLASS — APPLICATION GLOBALE ===== */
+/* Filtre SVG injecté dans le HTML pour la réfraction */
+.liquid-glass,
+.auth-container,
+#input-container,
+#chat-box,
+.settings-modal,
+.memory-modal,
+.nexus-header.liquid {
+    background: rgba(255, 255, 255, 0.07) !important;
+    backdrop-filter: blur(32px) saturate(180%) contrast(105%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%) contrast(105%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 
+        0 8px 40px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255,255,255,0.3),
+        inset 0 -1px 0 rgba(255,255,255,0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Reflet dynamique */
+.liquid-glass::before,
+.auth-container::before,
+#input-container::before,
+.settings-modal::before,
+.memory-modal::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, 
+        rgba(255,255,255,0.22) 0%, 
+        rgba(255,255,255,0.05) 40%, 
+        transparent 70%);
+    pointer-events: none;
+    animation: liquid-flow 12s linear infinite;
+    border-radius: inherit;
+    z-index: 0;
+}
+
+@keyframes liquid-flow {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    100% { transform: translate(8px, -6px) rotate(3deg); }
+}
+
+/* Header Nexus renforcé */
+.nexus-header.liquid {
+    backdrop-filter: blur(40px) saturate(200%) contrast(108%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%) contrast(108%);
+}
+
+/* S'assurer que le contenu des éléments passe au-dessus du ::before */
+#input-container > *,
+.auth-container > *,
+.settings-modal > *,
+.memory-modal > * {
+    position: relative;
+    z-index: 1;
+}
