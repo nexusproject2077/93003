@@ -1450,6 +1450,8 @@ window.copyCode = function(btn) {
         const scrolled = chatBox ? chatBox.scrollTop > 10 : window.scrollY > 10;
         header.classList.toggle('scrolled', scrolled);
     }
+    // Liquid glass class toujours active
+    header.classList.add('liquid');
 
     if (chatBox) chatBox.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
