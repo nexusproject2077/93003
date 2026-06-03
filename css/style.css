@@ -2237,14 +2237,8 @@ kbd {
         rgba(255,255,255,0.05) 40%, 
         transparent 70%);
     pointer-events: none;
-    animation: liquid-flow 12s linear infinite;
     border-radius: inherit;
     z-index: 0;
-}
-
-@keyframes liquid-flow {
-    0%   { transform: translate(0, 0) rotate(0deg); }
-    100% { transform: translate(8px, -6px) rotate(3deg); }
 }
 
 /* Header Nexus renforcé */
