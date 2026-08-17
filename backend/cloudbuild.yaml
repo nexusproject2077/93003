@@ -1,0 +1,50 @@
+# =====================================================================
+#  Cloud Build — build the backend image and deploy it to Cloud Run.
+#
+#  Run from the repo root:
+#    gcloud builds submit --config backend/cloudbuild.yaml \
+#      --substitutions=_REGION=europe-west1,_SERVICE=nexus-ai-api
+#
+#  Secrets (GROQ_API_KEY, JWT_SECRET) are read from Secret Manager at
+#  deploy time — create them first:
+#    echo -n "YOUR_GROQ_KEY" | gcloud secrets create GROQ_API_KEY --data-file=-
+#    echo -n "$(openssl rand -hex 32)" | gcloud secrets create JWT_SECRET --data-file=-
+# =====================================================================
+substitutions:
+  _REGION: europe-west1
+  _SERVICE: nexus-ai-api
+
+steps:
+  # 1 — Build the container image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+      - backend
+
+  # 2 — Push it to Artifact Registry
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+
+  # 3 — Deploy to Cloud Run
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --set-secrets=GROQ_API_KEY=GROQ_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY
