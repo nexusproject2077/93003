@@ -58,6 +58,30 @@ function publicUser(user) {
   return { id: user.id, username: user.username, email: user.email };
 }
 
+// ---------------------------------------------------------------
+//  FIREBASE ADMIN (lazy) — verifies social sign-in ID tokens.
+//  On Cloud Run in the same GCP project, Application Default
+//  Credentials work with no extra config. Locally, set
+//  GOOGLE_APPLICATION_CREDENTIALS to a service-account key file.
+// ---------------------------------------------------------------
+let admin = null;
+let firebaseReady = false;
+async function ensureFirebase() {
+  if (firebaseReady) return true;
+  try {
+    if (!admin) admin = (await import('firebase-admin')).default;
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        projectId: process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || undefined,
+      });
+    }
+    firebaseReady = true;
+  } catch (e) {
+    console.error('Firebase Admin unavailable:', e.message);
+  }
+  return firebaseReady;
+}
+
 function auth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
@@ -105,10 +129,44 @@ app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Champs manquants.' });
   const user = store.users.get(email);
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+  if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
   }
   res.json({ token: signToken(user), user: publicUser(user) });
+});
+
+// Social sign-in (Firebase Authentication): the frontend performs the
+// Google/GitHub popup, then posts the Firebase ID token here. We verify
+// it with Firebase Admin and issue our own app JWT so every other route
+// keeps working unchanged.
+app.post('/auth/firebase', async (req, res) => {
+  const { idToken } = req.body || {};
+  if (!idToken) return res.status(400).json({ error: 'idToken manquant.' });
+  if (!(await ensureFirebase())) {
+    return res.status(501).json({ error: 'Connexion sociale non configurée sur le serveur (Firebase Admin indisponible).' });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const email = decoded.email || `${decoded.uid}@firebase.local`;
+    let user = store.users.get(email);
+    if (!user) {
+      user = {
+        id: decoded.uid,
+        username: decoded.name || (decoded.email ? decoded.email.split('@')[0] : 'user'),
+        email,
+        passwordHash: null,
+        provider: (decoded.firebase && decoded.firebase.sign_in_provider) || 'firebase',
+        settings: {},
+        memory: [],
+        sidebarState: 'visible',
+      };
+      store.users.set(email, user);
+    }
+    res.json({ token: signToken(user), user: publicUser(user) });
+  } catch (e) {
+    console.error('verifyIdToken failed:', e.message);
+    res.status(401).json({ error: 'Jeton Firebase invalide.' });
+  }
 });
 
 // ---------------------------------------------------------------

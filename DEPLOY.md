@@ -75,7 +75,40 @@ echo -n "LE_TOKEN" | gcloud secrets create FIREBASE_TOKEN --data-file=-
 gcloud builds submit --config cloudbuild.yaml
 ```
 
-## 3. Résultat
+## 3. Connexion sociale (Firebase Authentication)
+
+Le front fait le popup Google/GitHub, récupère l'**ID token** Firebase et le
+poste à `POST /auth/firebase` ; le backend le vérifie avec Firebase Admin puis
+émet le JWT applicatif habituel (les autres routes ne changent pas).
+
+### a. Activer les fournisseurs
+
+Console Firebase → **Authentication → Sign-in method** → activer **Google** et
+**GitHub**.
+
+- **GitHub** : crée une OAuth App sur GitHub
+  (Settings → Developer settings → OAuth Apps).
+  - *Authorization callback URL* : `https://REPLACE_PROJECT_ID.firebaseapp.com/__/auth/handler`
+  - Colle le *Client ID* / *Client secret* dans Firebase.
+- **Authorized domains** (Authentication → Settings) : ajoute `nexus-ai.web.app`
+  (et `localhost` pour le dev).
+
+### b. Config front
+
+Authentication → *Project settings → General → Your apps* : copie `apiKey`,
+`authDomain`, `projectId`, `appId` dans **`frontend/js/firebase-config.js`**.
+
+### c. Backend
+
+Rien à faire sur Cloud Run : Firebase Admin utilise les *Application Default
+Credentials* et lit `GOOGLE_CLOUD_PROJECT` automatiquement. En local, exporte
+`GOOGLE_APPLICATION_CREDENTIALS` vers une clé de compte de service pour tester la
+vérification des tokens.
+
+> Tant que `firebase-config.js` contient les placeholders `REPLACE_…`, les
+> boutons sociaux affichent un message d'aide au lieu de lancer le popup.
+
+## 4. Résultat
 
 - Frontend : **https://nexus-ai.web.app**
 - Backend  : URL Cloud Run (référencée dans `frontend/js/config.js`)

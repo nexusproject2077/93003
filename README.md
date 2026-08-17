@@ -20,6 +20,10 @@ L'URL de l'API se configure dans [`frontend/js/config.js`](frontend/js/config.js
 (`window.NEXUS_CONFIG.API_BASE`). Par défaut, il pointe sur l'API existante ;
 bascule-le sur l'URL Cloud Run quand ton nouveau backend est en ligne.
 
+La **connexion sociale** (Google / GitHub) passe par **Firebase Authentication** :
+renseigne [`frontend/js/firebase-config.js`](frontend/js/firebase-config.js) et
+suis la section 3 de [DEPLOY.md](DEPLOY.md).
+
 ## Backend
 
 ```bash

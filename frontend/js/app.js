@@ -1577,10 +1577,64 @@ window.useSuggestion = function(index) {
     userInput.setSelectionRange(userInput.value.length, userInput.value.length);
 };
 
-// ===== CONNEXION SOCIALE =====
-window.handleSocialAuth = function(provider) {
+// ===== CONNEXION SOCIALE (Firebase Authentication) =====
+let _firebaseApp = null;
+
+function firebaseConfigured() {
+    const c = window.FIREBASE_CONFIG || {};
+    return typeof firebase !== 'undefined' && c.apiKey && !String(c.apiKey).startsWith('REPLACE');
+}
+
+function initFirebase() {
+    if (_firebaseApp) return _firebaseApp;
+    if (!firebaseConfigured()) return null;
+    _firebaseApp = firebase.apps && firebase.apps.length
+        ? firebase.app()
+        : firebase.initializeApp(window.FIREBASE_CONFIG);
+    return _firebaseApp;
+}
+
+window.handleSocialAuth = async function(provider) {
     const label = provider === 'google' ? 'Google' : 'GitHub';
-    showToast(`Connexion ${label} bientôt disponible.`, '', 3000);
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '';
+
+    if (!firebaseConfigured()) {
+        showToast('Connexion sociale : configure Firebase dans frontend/js/firebase-config.js', 'error', 5000);
+        return;
+    }
+
+    initFirebase();
+    const authProvider = provider === 'google'
+        ? new firebase.auth.GoogleAuthProvider()
+        : new firebase.auth.GithubAuthProvider();
+
+    try {
+        const result = await firebase.auth().signInWithPopup(authProvider);
+        const idToken = await result.user.getIdToken();
+        const res = await fetch(`${API_BASE}/auth/firebase`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            if (errEl) errEl.textContent = data.error || `Connexion ${label} échouée.`;
+            return;
+        }
+        setAuth(data.token, data.user);
+        // Déconnexion du SDK Firebase : on garde uniquement notre JWT applicatif
+        try { await firebase.auth().signOut(); } catch {}
+        initChatPage();
+    } catch (e) {
+        if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) return;
+        if (e && e.code === 'auth/account-exists-with-different-credential') {
+            if (errEl) errEl.textContent = 'Un compte existe déjà avec cet email via un autre fournisseur.';
+            return;
+        }
+        console.error('Social auth error:', e);
+        if (errEl) errEl.textContent = `Connexion ${label} échouée.`;
+    }
 };
 
 // ===== LIQUID GLASS HEADER SCROLL EFFECT =====
