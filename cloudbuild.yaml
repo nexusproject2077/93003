@@ -1,0 +1,28 @@
+# =====================================================================
+#  Cloud Build — deploy the FRONTEND to Firebase Hosting (nexus-ai.web.app)
+#
+#  Run from the repo root:
+#    gcloud builds submit --config cloudbuild.yaml
+#
+#  Requires a Firebase CI token stored in Secret Manager as FIREBASE_TOKEN:
+#    firebase login:ci                       # generate a token
+#    echo -n "THE_TOKEN" | gcloud secrets create FIREBASE_TOKEN --data-file=-
+#
+#  For the backend, use backend/cloudbuild.yaml instead.
+# =====================================================================
+steps:
+  - name: gcr.io/$PROJECT_ID/firebase
+    args:
+      - deploy
+      - --only=hosting:nexus-ai
+      - --project=$PROJECT_ID
+      - --non-interactive
+    secretEnv: ['FIREBASE_TOKEN']
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/FIREBASE_TOKEN/versions/latest
+      env: 'FIREBASE_TOKEN'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

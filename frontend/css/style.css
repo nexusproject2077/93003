@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+    --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+    --accent: #00d2ff;
+    --accent-2: #7c28dc;
+    --grad-brand: linear-gradient(120deg, #00d2ff 0%, #4f7bff 50%, #7c28dc 100%);
+}
 
 * {
     box-sizing: border-box;
@@ -17,23 +25,44 @@ body::after {
 }
 
 body::before {
-    width: 800px;
-    height: 800px;
-    background: radial-gradient(circle, rgba(0, 210, 255, 0.07) 0%, transparent 65%);
-    top: -250px;
-    right: 0%;
-    filter: blur(60px);
+    width: 820px;
+    height: 820px;
+    background: radial-gradient(circle, rgba(0, 210, 255, 0.16) 0%, rgba(0, 150, 255, 0.06) 45%, transparent 68%);
+    top: -260px;
+    right: -60px;
+    filter: blur(100px);
     animation: aurora-drift-1 26s ease-in-out infinite alternate;
 }
 
 body::after {
-    width: 650px;
-    height: 650px;
-    background: radial-gradient(circle, rgba(120, 40, 220, 0.06) 0%, transparent 65%);
-    bottom: -150px;
-    left: 15%;
-    filter: blur(70px);
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(124, 40, 220, 0.15) 0%, rgba(90, 30, 200, 0.05) 45%, transparent 68%);
+    bottom: -180px;
+    left: 8%;
+    filter: blur(110px);
     animation: aurora-drift-2 32s ease-in-out infinite alternate;
+}
+
+/* Troisième halo — profondeur cyan/électrique au centre */
+.aurora-orb {
+    content: '';
+    position: fixed;
+    width: 560px;
+    height: 560px;
+    border-radius: 50%;
+    top: 30%;
+    left: 42%;
+    background: radial-gradient(circle, rgba(64, 120, 255, 0.12) 0%, transparent 66%);
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+    animation: aurora-drift-3 38s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift-3 {
+    0%   { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(60px, 40px) scale(1.18); }
 }
 
 @keyframes aurora-drift-1 {
@@ -49,7 +78,7 @@ body::after {
 body {
     background: #06060f;
     color: #e2e8f0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-sans);
     min-height: 100vh;
     display: flex;
     overflow-y: auto;
@@ -126,7 +155,7 @@ body {
     border: none;
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.35);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.825rem;
     font-weight: 500;
     cursor: pointer;
@@ -170,7 +199,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     color: rgba(255, 255, 255, 0.88);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.875rem;
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -199,7 +228,7 @@ body {
     color: rgba(0, 210, 255, 0.9);
     border: 1px solid rgba(0, 210, 255, 0.18);
     border-radius: 10px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
@@ -324,7 +353,7 @@ body {
     cursor: pointer;
     font-size: 0.825rem;
     font-weight: 500;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     transition: background 0.2s ease, border-color 0.2s ease;
     display: flex;
     align-items: center;
@@ -889,7 +918,7 @@ h1 {
 #user-input {
     padding: 9px 10px;
     font-size: 0.875rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     border: none;
     background: transparent;
     color: rgba(255, 255, 255, 0.88);
@@ -1240,7 +1269,7 @@ body { min-height: 100%; min-height: -webkit-fill-available; }
     border: 1px solid transparent;
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.45);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.82rem;
     font-weight: 500;
     cursor: pointer;
@@ -1365,7 +1394,7 @@ body { min-height: 100%; min-height: -webkit-fill-available; }
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.75);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.82rem;
     cursor: pointer;
     outline: none;
@@ -1390,7 +1419,7 @@ body { min-height: 100%; min-height: -webkit-fill-available; }
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.85);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.85rem;
     outline: none;
     transition: border-color 0.2s ease;
@@ -1406,7 +1435,7 @@ body { min-height: 100%; min-height: -webkit-fill-available; }
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.85);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.85rem;
     outline: none;
     resize: vertical;
@@ -1530,7 +1559,7 @@ body { min-height: 100%; min-height: -webkit-fill-available; }
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.65);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.82rem;
     font-weight: 500;
     cursor: pointer;
@@ -1712,7 +1741,7 @@ kbd {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 5px;
     color: rgba(255, 255, 255, 0.4);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.72rem;
     cursor: pointer;
     transition: all 0.18s ease;
@@ -1764,7 +1793,7 @@ kbd {
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.7);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.8rem;
     outline: none;
     transition: border-color 0.2s ease;
@@ -1794,7 +1823,7 @@ kbd {
     border-radius: 10px;
     color: rgba(255, 255, 255, 0.82);
     font-size: 0.83rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     animation: toastIn 0.22s ease;
@@ -2000,7 +2029,7 @@ kbd {
     cursor: pointer;
     font-size: 0.825rem;
     font-weight: 500;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     transition: background 0.2s ease, border-color 0.2s ease;
     display: flex;
     align-items: center;
@@ -2091,7 +2120,7 @@ kbd {
     border: 1px solid rgba(239,68,68,0.15);
     border-radius: 7px;
     font-size: 0.75rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     cursor: pointer;
     transition: all 0.18s ease;
 }
@@ -2205,7 +2234,6 @@ kbd {
 /* ===== LIQUID GLASS — APPLICATION GLOBALE ===== */
 /* Filtre SVG injecté dans le HTML pour la réfraction */
 .liquid-glass,
-.auth-container,
 #input-container,
 #chat-box,
 .settings-modal,
@@ -2215,7 +2243,7 @@ kbd {
     backdrop-filter: blur(32px) saturate(180%) contrast(105%);
     -webkit-backdrop-filter: blur(32px) saturate(180%) contrast(105%);
     border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 
+    box-shadow:
         0 8px 40px rgba(0, 0, 0, 0.45),
         inset 0 1px 0 rgba(255,255,255,0.3),
         inset 0 -1px 0 rgba(255,255,255,0.08);
@@ -2225,7 +2253,6 @@ kbd {
 
 /* Reflet dynamique */
 .liquid-glass::before,
-.auth-container::before,
 #input-container::before,
 .settings-modal::before,
 .memory-modal::before {
@@ -2254,4 +2281,481 @@ kbd {
 .memory-modal > * {
     position: relative;
     z-index: 1;
+}
+
+/* =====================================================================
+   LOGIN PREMIUM — Glassmorphism navy + Aurora + Social + Bouton dégradé
+   ===================================================================== */
+.auth-container {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+/* Fin liseré lumineux simulant le reflet du verre */
+.auth-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(0, 210, 255, 0.35), rgba(124, 40, 220, 0.15) 45%, transparent 70%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.auth-logo h1 {
+    font-family: var(--font-display);
+}
+
+/* Glow électrique au focus des champs */
+.auth-field input:focus {
+    border-color: rgba(0, 150, 255, 0.5);
+    box-shadow: 0 0 15px rgba(0, 150, 255, 0.3), 0 0 0 1px rgba(0, 150, 255, 0.25);
+}
+
+/* Bouton principal — dégradé cyan → violet, lueur au survol */
+.auth-btn {
+    background: var(--grad-brand);
+    background-size: 160% auto;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 6px 20px rgba(0, 150, 255, 0.22);
+    transition: all 0.3s ease;
+}
+
+.auth-btn:hover {
+    background-position: right center;
+    box-shadow: 0 8px 30px rgba(0, 150, 255, 0.4), 0 0 22px rgba(124, 40, 220, 0.3);
+    transform: translateY(-1px);
+    border: none;
+}
+
+.auth-btn:active { transform: translateY(0); }
+
+/* Séparateur "ou continuer avec" */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0 16px;
+    color: rgba(255, 255, 255, 0.28);
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+}
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.09);
+}
+
+/* Boutons sociaux */
+.social-auth {
+    display: flex;
+    gap: 10px;
+}
+
+.social-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.82);
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.social-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.social-btn svg { flex-shrink: 0; }
+
+/* =====================================================================
+   CHAT PREMIUM — Toolbar modèle, onboarding, glow, compteur Groq
+   ===================================================================== */
+
+/* Header plus compact */
+.nexus-header-inner { padding: 12px 20px 10px; }
+.nexus-header-inner h1 { font-family: var(--font-display); font-size: 1.5rem; }
+
+/* Barre d'outils rapprochée du chat */
+.chat-toolbar {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ---- Sélecteur de modèle (dropdown) ---- */
+.model-selector { position: relative; }
+
+.model-selector-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.85);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.model-selector-btn:hover {
+    background: rgba(0, 210, 255, 0.08);
+    border-color: rgba(0, 210, 255, 0.25);
+}
+.model-selector-btn .model-chevron { transition: transform 0.25s ease; opacity: 0.6; }
+.model-selector-btn.open .model-chevron { transform: rotate(180deg); }
+
+.model-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 230px;
+    background: rgba(12, 14, 26, 0.92);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 6px;
+    z-index: 120;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    animation: slideUp 0.2s ease;
+}
+.model-menu.hidden { display: none; }
+
+.model-option {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 9px 11px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: rgba(255, 255, 255, 0.8);
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all 0.16s ease;
+    text-align: left;
+}
+.model-option:hover { background: rgba(255, 255, 255, 0.05); }
+.model-option.active {
+    background: rgba(0, 210, 255, 0.1);
+    border-color: rgba(0, 210, 255, 0.2);
+}
+.model-option-main { font-size: 0.83rem; font-weight: 600; }
+.model-option-hint { font-size: 0.7rem; color: rgba(255, 255, 255, 0.4); }
+
+/* ---- Badge "Propulsé par Groq" ---- */
+.powered-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(0, 210, 255, 0.85);
+    background: rgba(0, 210, 255, 0.06);
+    border: 1px solid rgba(0, 210, 255, 0.15);
+    border-radius: 20px;
+}
+.powered-tag svg { color: #00d2ff; filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.6)); }
+
+/* ---- Compteur de vitesse fantôme (Tokens/s) ---- */
+.speed-meter {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(0, 210, 255, 0.9);
+    background: rgba(0, 210, 255, 0.08);
+    border: 1px solid rgba(0, 210, 255, 0.18);
+    border-radius: 8px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.speed-meter.hidden { display: none; }
+.speed-meter svg { color: #00d2ff; }
+.speed-meter .speed-meter-unit { font-weight: 500; opacity: 0.7; font-size: 0.64rem; }
+.speed-meter.flash {
+    box-shadow: 0 0 16px rgba(0, 210, 255, 0.5);
+    transform: scale(1.06);
+}
+
+/* ---- Glow / relief sur les blocs principaux ---- */
+#chat-box {
+    border-color: rgba(0, 210, 255, 0.1) !important;
+    box-shadow:
+        0 8px 40px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 0 40px rgba(0, 150, 255, 0.05);
+}
+.nexus-header.scrolled { border-color: rgba(0, 210, 255, 0.14); }
+
+/* ---- Bouton "Nouvelle conversation" — dégradé néon ---- */
+#new-chat-btn {
+    background: var(--grad-brand);
+    background-size: 160% auto;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 16px rgba(0, 150, 255, 0.22);
+    transition: all 0.3s ease;
+}
+#new-chat-btn:hover {
+    background-position: right center;
+    box-shadow: 0 6px 22px rgba(0, 150, 255, 0.4), 0 0 18px rgba(124, 40, 220, 0.3);
+    transform: translateY(-1px);
+    border: none;
+}
+
+/* ---- Écran d'accueil / Onboarding ---- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    min-height: 320px;
+    padding: 24px 12px;
+    text-align: center;
+    animation: fadeUp 0.4s ease;
+}
+.empty-logo {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+.groq-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(0, 210, 255, 0.07);
+    border: 1px solid rgba(0, 210, 255, 0.2);
+    border-radius: 24px;
+    box-shadow: 0 0 24px rgba(0, 150, 255, 0.12);
+}
+.groq-banner strong { color: #00d2ff; }
+.groq-banner svg { color: #00d2ff; filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.7)); }
+.empty-subtitle {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 2px;
+}
+.suggestion-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 440px;
+    margin-top: 6px;
+}
+.suggestion-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    color: rgba(255, 255, 255, 0.82);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.22s ease;
+}
+.suggestion-card:hover {
+    background: rgba(0, 210, 255, 0.07);
+    border-color: rgba(0, 210, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 150, 255, 0.08);
+}
+.suggestion-icon { font-size: 1.25rem; flex-shrink: 0; }
+
+/* ---- Sidebar : recherche en haut avec icône ---- */
+.sidebar-search { position: relative; padding: 0; }
+.sidebar-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+}
+.sidebar-search input { padding-left: 32px; }
+
+/* ---- Sidebar user épinglé en bas ---- */
+.sidebar-user {
+    margin: 0;
+    padding: 12px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(6, 6, 15, 0.4);
+    flex-shrink: 0;
+}
+
+/* ---- Champ de saisie : plus de respiration ---- */
+#user-input { padding: 11px 14px; }
+
+/* =====================================================================
+   PARAMÈTRES — Aération, contraste, lisibilité
+   ===================================================================== */
+
+/* Aération de la liste latérale */
+.settings-nav { padding: 16px 10px; gap: 5px; }
+.settings-nav-item {
+    padding: 10px 13px;
+    margin-bottom: 2px;
+    border-radius: 10px;
+}
+.settings-nav-item.active {
+    background: rgba(0, 210, 255, 0.1);
+    border-color: rgba(0, 210, 255, 0.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Descriptions lisibles : gris clair mat au lieu du bleu foncé */
+.settings-desc { color: #94a3b8; }
+
+/* Menus déroulants : fond plus clair + surbrillance au survol */
+.settings-select {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.9);
+}
+.settings-select:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(0, 210, 255, 0.3);
+}
+.settings-select option { background: #12131f; color: rgba(255, 255, 255, 0.9); }
+
+/* Mode Flash — mise en avant */
+.flash-label { display: inline-flex; align-items: center; gap: 6px; }
+.flash-tag {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 20px;
+    color: #06060f;
+    background: linear-gradient(120deg, #00d2ff, #7c28dc);
+    box-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
+}
+
+/* ---- Responsive : toolbar + onboarding ---- */
+@media (max-width: 768px) {
+    .chat-toolbar { max-width: 100%; padding: 0 2px; }
+    .powered-tag { display: none; }
+    .suggestion-grid { grid-template-columns: 1fr; max-width: 100%; }
+    .empty-logo { font-size: 1.8rem; }
+    .model-menu { min-width: 200px; }
+}
+
+/* =====================================================================
+   ICÔNES SVG PREMIUM (remplacement des emojis)
+   ===================================================================== */
+
+/* Icônes de fichiers joints */
+.uploaded-file .file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(0, 210, 255, 0.08);
+    border: 1px solid rgba(0, 210, 255, 0.14);
+    color: rgba(0, 210, 255, 0.9);
+    flex-shrink: 0;
+    font-size: 0;
+}
+.uploaded-file .file-icon svg { width: 17px; height: 17px; }
+
+/* Badge "analysable" avec check SVG */
+.file-badge.ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.file-badge.ok svg { width: 10px; height: 10px; }
+
+/* Cartes de suggestions — icône dans une pastille dégradée */
+.suggestion-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    color: #00d2ff;
+    background: linear-gradient(135deg, rgba(0, 210, 255, 0.16), rgba(124, 40, 220, 0.14));
+    border: 1px solid rgba(0, 210, 255, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 150, 255, 0.12);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    font-size: 0;
+}
+.suggestion-icon svg { width: 20px; height: 20px; }
+.suggestion-title { flex: 1; }
+.suggestion-arrow {
+    width: 16px;
+    height: 16px;
+    color: rgba(0, 210, 255, 0.7);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.suggestion-card:hover .suggestion-arrow { opacity: 1; transform: translateX(0); }
+.suggestion-card:hover .suggestion-icon {
+    transform: scale(1.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 18px rgba(0, 150, 255, 0.28);
+}
+
+/* Éclair Mode Flash */
+.flash-bolt {
+    color: #00d2ff;
+    filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.6));
+    flex-shrink: 0;
 }
