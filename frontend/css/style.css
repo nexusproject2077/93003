@@ -2691,3 +2691,71 @@ kbd {
     .empty-logo { font-size: 1.8rem; }
     .model-menu { min-width: 200px; }
 }
+
+/* =====================================================================
+   ICÔNES SVG PREMIUM (remplacement des emojis)
+   ===================================================================== */
+
+/* Icônes de fichiers joints */
+.uploaded-file .file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(0, 210, 255, 0.08);
+    border: 1px solid rgba(0, 210, 255, 0.14);
+    color: rgba(0, 210, 255, 0.9);
+    flex-shrink: 0;
+    font-size: 0;
+}
+.uploaded-file .file-icon svg { width: 17px; height: 17px; }
+
+/* Badge "analysable" avec check SVG */
+.file-badge.ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.file-badge.ok svg { width: 10px; height: 10px; }
+
+/* Cartes de suggestions — icône dans une pastille dégradée */
+.suggestion-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    color: #00d2ff;
+    background: linear-gradient(135deg, rgba(0, 210, 255, 0.16), rgba(124, 40, 220, 0.14));
+    border: 1px solid rgba(0, 210, 255, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 150, 255, 0.12);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    font-size: 0;
+}
+.suggestion-icon svg { width: 20px; height: 20px; }
+.suggestion-title { flex: 1; }
+.suggestion-arrow {
+    width: 16px;
+    height: 16px;
+    color: rgba(0, 210, 255, 0.7);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.suggestion-card:hover .suggestion-arrow { opacity: 1; transform: translateX(0); }
+.suggestion-card:hover .suggestion-icon {
+    transform: scale(1.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 18px rgba(0, 150, 255, 0.28);
+}
+
+/* Éclair Mode Flash */
+.flash-bolt {
+    color: #00d2ff;
+    filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.6));
+    flex-shrink: 0;
+}

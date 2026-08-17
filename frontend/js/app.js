@@ -428,9 +428,26 @@ async function extractWordText(file) {
     return result.value;
 }
 
+// Premium line-icons (SVG) — replaces emoji file glyphs
+const FILE_SVG = {
+    doc:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
+    pdf:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 17v-3h1a1 1 0 0 1 0 2h-1M13 17v-3h1.2M13 15.5h1"/></svg>',
+    image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.5-4.5L6 21"/></svg>',
+    sheet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+    json:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3a3 3 0 0 0-3 3v2a2 2 0 0 1-2 2 2 2 0 0 1 2 2v2a3 3 0 0 0 3 3M16 3a3 3 0 0 1 3 3v2a2 2 0 0 0 2 2 2 2 0 0 0-2 2v2a3 3 0 0 1-3 3"/></svg>',
+    file:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.25 20.2a5 5 0 0 1-7.07-7.07l9.19-9.19a3.33 3.33 0 0 1 4.71 4.71l-9.2 9.19a1.67 1.67 0 0 1-2.36-2.36l8.49-8.48"/></svg>',
+};
+
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
-    return { txt:'📄', pdf:'📕', doc:'📘', docx:'📘', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️', webp:'🖼️', xlsx:'📊', xls:'📊', csv:'📊', json:'📋', md:'📝' }[ext] || '📎';
+    const map = {
+        txt: 'doc', md: 'doc', doc: 'doc', docx: 'doc',
+        pdf: 'pdf',
+        jpg: 'image', jpeg: 'image', png: 'image', gif: 'image', webp: 'image', bmp: 'image', svg: 'image',
+        xlsx: 'sheet', xls: 'sheet', csv: 'sheet', ods: 'sheet',
+        json: 'json',
+    };
+    return FILE_SVG[map[ext]] || FILE_SVG.file;
 }
 
 function formatFileSize(bytes) {
@@ -463,7 +480,7 @@ function renderUploadedFiles() {
             const statusBadge = file.kind === 'loading'
                 ? '<span class="file-badge extracting">extraction…</span>'
                 : (file.kind === 'text' || file.kind === 'image') && file.content
-                ? '<span class="file-badge ok">✓ analysable</span>'
+                ? '<span class="file-badge ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>analysable</span>'
                 : file.kind === 'error'
                 ? '<span class="file-badge err">erreur</span>'
                 : '';
@@ -1517,10 +1534,10 @@ function updateSpeedMeter(data, text, elapsedSec) {
 
 // ===== ONBOARDING / ECRAN D'ACCUEIL =====
 const SUGGESTIONS = [
-    { icon: '💻', title: 'Aide-moi à coder', prompt: 'Aide-moi à écrire une fonction en JavaScript qui…' },
-    { icon: '✉️', title: 'Rédige un email', prompt: 'Rédige un email professionnel pour…' },
-    { icon: '📄', title: 'Analyse ce texte', prompt: 'Analyse et résume le texte suivant :\n\n' },
-    { icon: '💡', title: 'Explique un concept', prompt: 'Explique-moi simplement le concept de…' },
+    { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M13.5 6l-3 12"/></svg>', title: 'Aide-moi à coder', prompt: 'Aide-moi à écrire une fonction en JavaScript qui…' },
+    { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 7.3 5.2a2 2 0 0 0 2.4 0L20.5 7"/></svg>', title: 'Rédige un email', prompt: 'Rédige un email professionnel pour…' },
+    { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8.5 13h5M8.5 16.5h7"/></svg>', title: 'Analyse ce texte', prompt: 'Analyse et résume le texte suivant :\n\n' },
+    { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.7.6-1 1-1 2H9c0-1-.3-1.4-1-2A6 6 0 0 1 12 3z"/></svg>', title: 'Explique un concept', prompt: 'Explique-moi simplement le concept de…' },
 ];
 
 function renderEmptyState() {
@@ -1529,6 +1546,7 @@ function renderEmptyState() {
         <button class="suggestion-card" onclick="useSuggestion(${i})">
             <span class="suggestion-icon">${s.icon}</span>
             <span class="suggestion-title">${s.title}</span>
+            <svg class="suggestion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
     `).join('');
     chatBox.innerHTML = `
