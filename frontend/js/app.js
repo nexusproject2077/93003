@@ -1,7 +1,15 @@
 // ===== CONFIGURATION =====
-const API_BASE = 'https://api.mmi25b11.mmi-troyes.fr';
+const NEXUS_CFG = window.NEXUS_CONFIG || {};
+const API_BASE = NEXUS_CFG.API_BASE || 'https://api.mmi25b11.mmi-troyes.fr';
+const MODELS = NEXUS_CFG.MODELS || [{ id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 · 70B', hint: '' }];
 const TYPING_SPEED = 15;
 const TAVILY_KEY = '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';
+
+// ===== ÉTAT MODÈLE (sélecteur Groq) =====
+let currentModel = localStorage.getItem('nexus_model') || NEXUS_CFG.DEFAULT_MODEL || MODELS[0].id;
+function currentModelLabel() {
+    return (MODELS.find(m => m.id === currentModel) || MODELS[0]).label;
+}
 
 // ===== AUTH =====
 function getToken() { return localStorage.getItem('nexus_token'); }
@@ -126,15 +134,13 @@ function initChatPage() {
 
     loadConversationsFromServer();
     loadSettingsFromServer();
-    updateClock();
-    setInterval(updateClock, 1000);
+    initModelSelector();
 }
 
 // ===== ELEMENTS DOM =====
 const chatBox           = document.getElementById('chat-box');
 const userInput         = document.getElementById('user-input');
 const sendButton        = document.getElementById('send-button');
-const clock             = document.getElementById('clock');
 const conversationsList = document.getElementById('conversations-list');
 const newChatBtn        = document.getElementById('new-chat-btn');
 const sidebar           = document.getElementById('sidebar');
@@ -184,14 +190,6 @@ if (conversationsList) {
     conversationsList.addEventListener('click', () => {
         if (isMobile()) closeSidebar();
     });
-}
-
-// ===== HORLOGE =====
-function updateClock() {
-    if (!clock) return;
-    const now = new Date();
-    clock.textContent = [now.getHours(), now.getMinutes(), now.getSeconds()]
-        .map(n => String(n).padStart(2, '0')).join(':');
 }
 
 // ===== FICHIERS =====
@@ -554,6 +552,7 @@ function loadConversation(id) {
         if (msg.type === 'user') addMessage('user-message', msg.content, false, false);
         else addMessage('bot-message', msg.content, true, false);
     });
+    if (conv.messages.length === 0) renderEmptyState();
     renderConversationsList();
     setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 100);
 }
@@ -697,6 +696,7 @@ async function typeWriter(element, text, isHTML) {
 
 // ===== MESSAGES =====
 async function addMessage(className, message, isHTML = false, animate = true) {
+    removeEmptyState();
     const msg = document.createElement('div');
     msg.className = className;
 
@@ -908,11 +908,13 @@ async function getGroqAIResponse(message, searchContext = null) {
         conv.history.push({ role: 'user', content: fullMessage || 'Analyse ces fichiers' });
 
         currentFetch = new AbortController();
+        const _t0 = performance.now();
         const response = await fetch(`${API_BASE}/chat`, {
             method: 'POST',
             headers: authHeaders(),
             signal: currentFetch.signal,
             body: JSON.stringify({
+                model: currentModel,
                 messages: [
                     { role: 'system', content: buildSystemPrompt() },
                     ...conv.history
@@ -928,6 +930,9 @@ async function getGroqAIResponse(message, searchContext = null) {
 
         const data = await response.json();
         const aiResponse = data.choices[0].message.content;
+
+        // Compteur de vitesse fantôme (moat Groq)
+        updateSpeedMeter(data, aiResponse, (performance.now() - _t0) / 1000);
 
         conv.history.push({ role: 'assistant', content: aiResponse });
         if (conv.history.length > 20) conv.history = conv.history.slice(-20);
@@ -1043,7 +1048,7 @@ let _userMemory = [];
 
 const defaultSettings = {
     theme: 'system', contrast: 'system', accent: '#00d2ff', langue: 'auto',
-    typingSpeed: 15, vocalMode: false, notifGroup: 'push', notifCodex: 'push',
+    typingSpeed: 15, flashMode: false, vocalMode: false, notifGroup: 'push', notifCodex: 'push',
     notifProjects: 'email', notifReco: 'both', notifReplies: 'push', notifTasks: 'both',
     notifUsage: 'both', style: 'default', warm: 'default', enthusiastic: 'default',
     lists: 'default', emojis: 'default', quickReplies: true, instructions: '',
@@ -1071,7 +1076,7 @@ async function loadSettingsFromServer() {
         if (data.sidebarState === 'hidden') sidebar.classList.add('hidden');
         else if (window.innerWidth > 768) sidebar.classList.remove('hidden');
         const s = loadSettings();
-        window._typingSpeed = s.typingSpeed;
+        window._typingSpeed = s.flashMode ? 0 : s.typingSpeed;
         document.documentElement.style.setProperty('--accent', s.accent || '#00d2ff');
         if (s.theme === 'light') document.documentElement.classList.add('theme-light');
         else document.documentElement.classList.remove('theme-light');
@@ -1220,6 +1225,7 @@ function readSettingsFromDOM() {
         accent:        g('s-accent')?.value || defaultSettings.accent,
         langue:        g('s-langue')?.value || defaultSettings.langue,
         typingSpeed:   parseInt(g('s-typing-speed')?.value ?? defaultSettings.typingSpeed),
+        flashMode:     g('s-flash-mode')?.checked ?? defaultSettings.flashMode,
         vocalMode:     g('s-vocal-mode')?.checked ?? defaultSettings.vocalMode,
         notifGroup:    g('s-notif-group')?.value || defaultSettings.notifGroup,
         notifCodex:    g('s-notif-codex')?.value || defaultSettings.notifCodex,
@@ -1257,6 +1263,7 @@ function populateSettingsDOM(s) {
     const check = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
     set('s-theme', s.theme); set('s-contrast', s.contrast); set('s-accent', s.accent);
     set('s-langue', s.langue); set('s-typing-speed', s.typingSpeed);
+    check('s-flash-mode', s.flashMode);
     check('s-vocal-mode', s.vocalMode);
     set('s-notif-group', s.notifGroup); set('s-notif-codex', s.notifCodex);
     set('s-notif-projects', s.notifProjects); set('s-notif-reco', s.notifReco);
@@ -1284,7 +1291,7 @@ function id(x) { return document.getElementById(x); }
 function applySettings() {
     saveSettings();
     const s = loadSettings();
-    window._typingSpeed = s.typingSpeed;
+    window._typingSpeed = s.flashMode ? 0 : s.typingSpeed;
     document.documentElement.style.setProperty('--accent', s.accent);
     updateColorDot();
     const root = document.documentElement;
@@ -1394,7 +1401,7 @@ window.clearCache = function() {
 // Apply settings on page load
 (function() {
     const s = loadSettings();
-    window._typingSpeed = s.typingSpeed;
+    window._typingSpeed = s.flashMode ? 0 : s.typingSpeed;
     document.documentElement.style.setProperty('--accent', s.accent);
     if (s.theme === 'light') document.documentElement.classList.add('theme-light');
     if (s.contrast === 'high') document.documentElement.classList.add('contrast-high');
@@ -1438,6 +1445,124 @@ window.copyCode = function(btn) {
         btn.classList.add('copied');
         setTimeout(() => { btn.textContent = 'Copier'; btn.classList.remove('copied'); }, 1800);
     }).catch(() => {});
+};
+
+// ===== SELECTEUR DE MODELE (Groq) =====
+function initModelSelector() {
+    const menu = document.getElementById('model-menu');
+    const nameEl = document.getElementById('current-model-name');
+    if (nameEl) nameEl.textContent = currentModelLabel();
+    if (!menu) return;
+    menu.innerHTML = MODELS.map(m => `
+        <button class="model-option${m.id === currentModel ? ' active' : ''}" data-model="${m.id}" onclick="selectModel('${m.id}')">
+            <span class="model-option-main">${m.label}</span>
+            ${m.hint ? `<span class="model-option-hint">${m.hint}</span>` : ''}
+        </button>
+    `).join('');
+}
+
+window.toggleModelMenu = function(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('model-menu');
+    const btn = document.getElementById('model-selector-btn');
+    if (!menu) return;
+    const open = menu.classList.toggle('hidden');
+    if (btn) btn.classList.toggle('open', !open);
+};
+
+window.selectModel = function(id) {
+    currentModel = id;
+    localStorage.setItem('nexus_model', id);
+    const nameEl = document.getElementById('current-model-name');
+    if (nameEl) nameEl.textContent = currentModelLabel();
+    initModelSelector();
+    closeModelMenu();
+    showToast('Modèle : ' + currentModelLabel(), 'success', 1600);
+};
+
+function closeModelMenu() {
+    const menu = document.getElementById('model-menu');
+    const btn = document.getElementById('model-selector-btn');
+    if (menu) menu.classList.add('hidden');
+    if (btn) btn.classList.remove('open');
+}
+
+document.addEventListener('click', (e) => {
+    const sel = document.getElementById('model-selector');
+    if (sel && !sel.contains(e.target)) closeModelMenu();
+});
+
+// ===== COMPTEUR DE VITESSE (Tokens/s) =====
+function updateSpeedMeter(data, text, elapsedSec) {
+    const meter = document.getElementById('speed-meter');
+    const valEl = document.getElementById('speed-meter-value');
+    if (!meter || !valEl) return;
+    let tps = 0;
+    // Groq renvoie parfois des métriques d'usage précises
+    const usage = data && data.usage;
+    if (usage && usage.completion_tokens && usage.completion_time) {
+        tps = usage.completion_tokens / usage.completion_time;
+    } else if (usage && usage.completion_tokens && elapsedSec > 0) {
+        tps = usage.completion_tokens / elapsedSec;
+    } else if (elapsedSec > 0) {
+        // Estimation : ~4 caractères par token
+        tps = (text.length / 4) / elapsedSec;
+    }
+    if (!isFinite(tps) || tps <= 0) return;
+    valEl.textContent = Math.round(tps);
+    meter.classList.remove('hidden');
+    meter.classList.add('flash');
+    setTimeout(() => meter.classList.remove('flash'), 600);
+}
+
+// ===== ONBOARDING / ECRAN D'ACCUEIL =====
+const SUGGESTIONS = [
+    { icon: '💻', title: 'Aide-moi à coder', prompt: 'Aide-moi à écrire une fonction en JavaScript qui…' },
+    { icon: '✉️', title: 'Rédige un email', prompt: 'Rédige un email professionnel pour…' },
+    { icon: '📄', title: 'Analyse ce texte', prompt: 'Analyse et résume le texte suivant :\n\n' },
+    { icon: '💡', title: 'Explique un concept', prompt: 'Explique-moi simplement le concept de…' },
+];
+
+function renderEmptyState() {
+    if (!chatBox) return;
+    const cards = SUGGESTIONS.map((s, i) => `
+        <button class="suggestion-card" onclick="useSuggestion(${i})">
+            <span class="suggestion-icon">${s.icon}</span>
+            <span class="suggestion-title">${s.title}</span>
+        </button>
+    `).join('');
+    chatBox.innerHTML = `
+        <div class="empty-state" id="empty-state">
+            <div class="empty-logo"><span class="nexus-logo">NEXUS</span> <span class="ai-label">AI</span></div>
+            <div class="groq-banner">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                Propulsé par Groq — <strong>Réponses instantanées</strong>
+            </div>
+            <p class="empty-subtitle">Par où veux-tu commencer ?</p>
+            <div class="suggestion-grid">${cards}</div>
+        </div>`;
+}
+
+function removeEmptyState() {
+    const el = document.getElementById('empty-state');
+    if (el) el.remove();
+}
+
+window.useSuggestion = function(index) {
+    const s = SUGGESTIONS[index];
+    if (!s || !userInput) return;
+    userInput.value = s.prompt;
+    userInput.focus();
+    userInput.style.height = 'auto';
+    userInput.style.height = Math.min(userInput.scrollHeight, 160) + 'px';
+    // Place le curseur à la fin
+    userInput.setSelectionRange(userInput.value.length, userInput.value.length);
+};
+
+// ===== CONNEXION SOCIALE =====
+window.handleSocialAuth = function(provider) {
+    const label = provider === 'google' ? 'Google' : 'GitHub';
+    showToast(`Connexion ${label} bientôt disponible.`, '', 3000);
 };
 
 // ===== LIQUID GLASS HEADER SCROLL EFFECT =====
