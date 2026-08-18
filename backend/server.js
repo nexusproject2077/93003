@@ -43,6 +43,11 @@ const ALLOWED_MODELS = new Set([
 // Persistence backend (Firestore or in-memory) — see store.js.
 const store = await getStore();
 
+// Wrap async route handlers so a rejected promise (e.g. a Firestore
+// error) becomes a clean 500 instead of a hung request. Express 4 does
+// not catch async errors on its own.
+const ah = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
 // ---------------------------------------------------------------
 //  HELPERS
 // ---------------------------------------------------------------
@@ -61,6 +66,92 @@ function normalizePhone(raw) {
   const digits = cleaned.replace(/\D/g, '');
   if (digits.length < 6 || digits.length > 20) return null;
   return cleaned;
+}
+
+// ---------------------------------------------------------------
+//  LEGACY MIGRATION — import old MongoDB accounts on first login.
+//  The previous backend is still online; when a user logs in with an
+//  email we don't have yet, we forward the credentials to the legacy
+//  API and, on success, copy the account (with its conversations,
+//  settings and memory) into Firestore. The password is re-hashed
+//  locally from the plaintext provided at login, so existing passwords
+//  keep working. Set LEGACY_API_BASE='' to disable.
+// ---------------------------------------------------------------
+const LEGACY_API_BASE = (process.env.LEGACY_API_BASE ?? 'https://api.mmi25b11.mmi-troyes.fr').replace(/\/$/, '');
+
+async function legacyFetch(path, opts = {}, token = null) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    return await fetch(`${LEGACY_API_BASE}${path}`, { ...opts, headers, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function migrateFromLegacy(email, password) {
+  if (!LEGACY_API_BASE) return null;
+  let res;
+  try {
+    res = await legacyFetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+  } catch {
+    return null;                       // legacy API unreachable
+  }
+  if (!res.ok) return null;            // wrong credentials on legacy too
+  const data = await res.json().catch(() => null);
+  if (!data || !data.token || !data.user) return null;
+
+  const legacyToken = data.token;
+  const user = {
+    id: randomUUID(),
+    username: data.user.username || email.split('@')[0],
+    email,
+    phone: data.user.phone || '',
+    passwordHash: await bcrypt.hash(password, 10),
+    provider: 'password',
+    settings: {},
+    memory: [],
+    sidebarState: 'visible',
+    createdAt: new Date().toISOString(),
+    migratedFrom: 'legacy',
+  };
+
+  // Pull settings + memory (best-effort)
+  try {
+    const sRes = await legacyFetch('/user/settings', { method: 'GET' }, legacyToken);
+    if (sRes.ok) {
+      const s = await sRes.json();
+      user.settings = s.settings || {};
+      user.memory = s.memory || [];
+      if (s.sidebarState) user.sidebarState = s.sidebarState;
+    }
+  } catch { /* keep defaults */ }
+
+  await store.usersCreate(user);
+
+  // Pull conversations (best-effort)
+  try {
+    const cRes = await legacyFetch('/conversations', { method: 'GET' }, legacyToken);
+    if (cRes.ok) {
+      const convs = await cRes.json();
+      if (Array.isArray(convs)) {
+        for (const c of convs) {
+          await store.convsCreate({
+            _id: String(c._id || randomUUID()),
+            userId: user.id,
+            title: c.title || 'Conversation',
+            messages: c.messages || [],
+            history: c.history || [],
+            createdAt: c.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    }
+  } catch { /* skip conversations */ }
+
+  return user;
 }
 
 // ---------------------------------------------------------------
@@ -111,7 +202,7 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 // ---------------------------------------------------------------
 //  AUTH
 // ---------------------------------------------------------------
-app.post('/auth/register', async (req, res) => {
+app.post('/auth/register', ah(async (req, res) => {
   const { username, email, password, phone } = req.body || {};
   if (!username || !email || !password) return res.status(400).json({ error: 'Champs manquants.' });
   if (password.length < 6) return res.status(400).json({ error: 'Mot de passe trop court.' });
@@ -139,23 +230,31 @@ app.post('/auth/register', async (req, res) => {
   };
   await store.usersCreate(user);
   res.json({ token: signToken(user), user: publicUser(user) });
-});
+}));
 
-app.post('/auth/login', async (req, res) => {
+app.post('/auth/login', ah(async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Champs manquants.' });
-  const user = await store.usersGetByEmail(email);
-  if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+  let user = await store.usersGetByEmail(email);
+
+  // Unknown email here → maybe an old MongoDB account: migrate on the fly.
+  if (!user) {
+    user = await migrateFromLegacy(email, password);
+    if (user) return res.json({ token: signToken(user), user: publicUser(user) });
+    return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
+  }
+
+  if (!user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
   }
   res.json({ token: signToken(user), user: publicUser(user) });
-});
+}));
 
 // Social sign-in (Firebase Authentication): the frontend performs the
 // Google/GitHub popup, then posts the Firebase ID token here. We verify
 // it with Firebase Admin and issue our own app JWT so every other route
 // keeps working unchanged.
-app.post('/auth/firebase', async (req, res) => {
+app.post('/auth/firebase', ah(async (req, res) => {
   const { idToken } = req.body || {};
   if (!idToken) return res.status(400).json({ error: 'idToken manquant.' });
   if (!(await ensureFirebase())) {
@@ -185,16 +284,16 @@ app.post('/auth/firebase', async (req, res) => {
     console.error('verifyIdToken failed:', e.message);
     res.status(401).json({ error: 'Jeton Firebase invalide.' });
   }
-});
+}));
 
 // ---------------------------------------------------------------
 //  CONVERSATIONS
 // ---------------------------------------------------------------
-app.get('/conversations', auth, async (req, res) => {
+app.get('/conversations', auth, ah(async (req, res) => {
   res.json(await store.convsListByUser(req.user.id));
-});
+}));
 
-app.post('/conversations', auth, async (req, res) => {
+app.post('/conversations', auth, ah(async (req, res) => {
   const conv = {
     _id: randomUUID(),
     userId: req.user.id,
@@ -205,9 +304,9 @@ app.post('/conversations', auth, async (req, res) => {
   };
   await store.convsCreate(conv);
   res.json(conv);
-});
+}));
 
-app.put('/conversations/:id', auth, async (req, res) => {
+app.put('/conversations/:id', auth, ah(async (req, res) => {
   const conv = await store.convsGet(req.params.id);
   if (!conv || conv.userId !== req.user.id) return res.status(404).json({ error: 'Introuvable.' });
   const { title, messages, history } = req.body || {};
@@ -217,19 +316,19 @@ app.put('/conversations/:id', auth, async (req, res) => {
   if (history !== undefined) fields.history = history;
   const updated = await store.convsUpdate(req.params.id, fields);
   res.json(updated);
-});
+}));
 
-app.delete('/conversations/:id', auth, async (req, res) => {
+app.delete('/conversations/:id', auth, ah(async (req, res) => {
   const conv = await store.convsGet(req.params.id);
   if (!conv || conv.userId !== req.user.id) return res.status(404).json({ error: 'Introuvable.' });
   await store.convsDelete(req.params.id);
   res.json({ ok: true });
-});
+}));
 
 // ---------------------------------------------------------------
 //  CHAT — Groq proxy
 // ---------------------------------------------------------------
-app.post('/chat', auth, async (req, res) => {
+app.post('/chat', auth, ah(async (req, res) => {
   if (!GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY non configurée sur le serveur.' });
   const { messages, model } = req.body || {};
   if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages requis.' });
@@ -250,29 +349,29 @@ app.post('/chat', auth, async (req, res) => {
     console.error('Groq error:', err);
     res.status(502).json({ error: 'Erreur de communication avec Groq.' });
   }
-});
+}));
 
 // ---------------------------------------------------------------
 //  USER SETTINGS + PHONE + MEMORY
 // ---------------------------------------------------------------
-app.get('/user/settings', auth, (req, res) => {
+app.get('/user/settings', auth, ah((req, res) => {
   res.json({
     settings: req.user.settings || {},
     memory: req.user.memory || [],
     sidebarState: req.user.sidebarState || 'visible',
   });
-});
+}));
 
-app.put('/user/settings', auth, async (req, res) => {
+app.put('/user/settings', auth, ah(async (req, res) => {
   const { settings, sidebarState } = req.body || {};
   if (settings !== undefined) req.user.settings = settings;
   if (sidebarState !== undefined) req.user.sidebarState = sidebarState;
   await store.usersSave(req.user);
   res.json({ ok: true });
-});
+}));
 
 // Update the user's phone number (from the login prompt or Settings).
-app.put('/user/phone', auth, async (req, res) => {
+app.put('/user/phone', auth, ah(async (req, res) => {
   const { phone } = req.body || {};
   if (phone === '' || phone === null) {
     req.user.phone = '';
@@ -283,22 +382,30 @@ app.put('/user/phone', auth, async (req, res) => {
   }
   await store.usersSave(req.user);
   res.json({ ok: true, user: publicUser(req.user) });
-});
+}));
 
-app.put('/user/memory', auth, async (req, res) => {
+app.put('/user/memory', auth, ah(async (req, res) => {
   const { memory } = req.body || {};
   if (Array.isArray(memory)) req.user.memory = memory;
   await store.usersSave(req.user);
   res.json({ ok: true, memory: req.user.memory });
-});
+}));
 
-app.delete('/user/memory/:index', auth, async (req, res) => {
+app.delete('/user/memory/:index', auth, ah(async (req, res) => {
   const i = parseInt(req.params.index, 10);
   if (Number.isInteger(i) && i >= 0 && i < (req.user.memory || []).length) {
     req.user.memory.splice(i, 1);
     await store.usersSave(req.user);
   }
   res.json({ ok: true, memory: req.user.memory });
+}));
+
+// Central error handler — turns any thrown/rejected route error into a
+// clean JSON 500 instead of a hung request.
+app.use((err, req, res, next) => {
+  console.error('Unhandled route error:', err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Erreur serveur. Réessaie dans un instant.' });
 });
 
 // ---------------------------------------------------------------
