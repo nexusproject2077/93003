@@ -1,9 +1,9 @@
 {
   "projects": {
-    "default": "REPLACE_WITH_YOUR_GCP_PROJECT_ID"
+    "default": "nexus-ai-2077"
   },
   "targets": {
-    "REPLACE_WITH_YOUR_GCP_PROJECT_ID": {
+    "nexus-ai-2077": {
       "hosting": {
         "nexus-ai": [
           "nexus-ai"
