@@ -67,9 +67,9 @@ for S in GROQ_API_KEY JWT_SECRET; do
     --role="roles/secretmanager.secretAccessor"
 done
 
-# Build + deploy
+# Build + deploy (guillemets autour des substitutions — requis sur PowerShell)
 gcloud builds submit --config backend/cloudbuild.yaml \
-  --substitutions=_REGION=europe-west1,_SERVICE=nexus-ai-api
+  --substitutions="_REGION=europe-west1,_SERVICE=nexus-ai-api"
 ```
 
 À la fin, Cloud Run affiche une URL type `https://nexus-ai-api-xxxx.a.run.app`.

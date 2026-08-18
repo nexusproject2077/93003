@@ -1,9 +1,9 @@
 # =====================================================================
 #  Cloud Build — build the backend image and deploy it to Cloud Run.
 #
-#  Run from the repo root:
+#  Run from the repo root (quote the substitutions — required on PowerShell):
 #    gcloud builds submit --config backend/cloudbuild.yaml \
-#      --substitutions=_REGION=europe-west1,_SERVICE=nexus-ai-api
+#      --substitutions="_REGION=europe-west1,_SERVICE=nexus-ai-api"
 #
 #  Secrets (GROQ_API_KEY, JWT_SECRET) are read from Secret Manager at
 #  deploy time — create them first:
@@ -20,14 +20,14 @@ steps:
     args:
       - build
       - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$BUILD_ID
       - backend
 
   # 2 — Push it to Artifact Registry
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$BUILD_ID
 
   # 3 — Deploy to Cloud Run
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -36,7 +36,7 @@ steps:
       - run
       - deploy
       - ${_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$BUILD_ID
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
@@ -45,7 +45,7 @@ steps:
       - --set-secrets=GROQ_API_KEY=GROQ_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest
 
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/nexus/${_SERVICE}:$BUILD_ID
 
 options:
   logging: CLOUD_LOGGING_ONLY
