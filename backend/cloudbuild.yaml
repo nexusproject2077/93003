@@ -41,6 +41,7 @@ steps:
       - --platform=managed
       - --allow-unauthenticated
       - --port=8080
+      - --set-env-vars=USE_FIRESTORE=true
       - --set-secrets=GROQ_API_KEY=GROQ_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest
 
 images:

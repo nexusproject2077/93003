@@ -33,9 +33,10 @@ npm install
 npm run dev               # http://localhost:8080
 ```
 
-> Le stockage est **en mémoire** par défaut (pratique pour démarrer). Pour la
-> production, remplace l'objet `store` de `server.js` par Firestore ou une base
-> de données (les emplacements sont balisés `TODO`).
+> Persistance : **Firestore** quand `USE_FIRESTORE=true`, sinon **en mémoire**
+> (défaut pratique pour le dev, données perdues au redémarrage). Toute la logique
+> est isolée dans [`backend/store.js`](backend/store.js) — voir la section 1 de
+> [DEPLOY.md](DEPLOY.md) pour créer la base Firestore.
 
 ## Déploiement
 

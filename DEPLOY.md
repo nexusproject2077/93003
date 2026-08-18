@@ -30,7 +30,29 @@ gcloud artifacts repositories create nexus --repository-format=docker --location
 > Remplace `MON_PROJECT_ID` par ton vrai ID, puis mets-le dans **`.firebaserc`**
 > à la place de `REPLACE_WITH_YOUR_GCP_PROJECT_ID`.
 
-## 1. Backend → Cloud Run
+## 1. Base de données → Firestore
+
+Le backend persiste les comptes, conversations, paramètres, mémoire et numéros
+de téléphone dans **Cloud Firestore** (mode Native) quand `USE_FIRESTORE=true`
+(déjà réglé dans `backend/cloudbuild.yaml`).
+
+```bash
+# Créer la base Firestore (mode Native) dans la même région que Cloud Run
+gcloud firestore databases create --location=europe-west1
+
+# Le compte de service Cloud Run doit pouvoir lire/écrire Firestore
+PROJECT_NUMBER=$(gcloud projects describe MON_PROJECT_ID --format='value(projectNumber)')
+gcloud projects add-iam-policy-binding MON_PROJECT_ID \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/datastore.user"
+```
+
+> L'accès à Firestore passe uniquement par le backend (Admin SDK, qui contourne
+> les règles de sécurité) : aucune règle Firestore côté client n'est nécessaire.
+> En local, mets `USE_FIRESTORE=false` (défaut) pour rester en mémoire, ou pointe
+> `GOOGLE_APPLICATION_CREDENTIALS` vers une clé de compte de service pour tester.
+
+## 2. Backend → Cloud Run
 
 ```bash
 # Secrets (jamais dans le code)
@@ -53,7 +75,7 @@ gcloud builds submit --config backend/cloudbuild.yaml \
 À la fin, Cloud Run affiche une URL type `https://nexus-ai-api-xxxx.a.run.app`.
 Copie-la dans **`frontend/js/config.js`** (`API_BASE`).
 
-## 2. Frontend → Firebase Hosting
+## 3. Frontend → Firebase Hosting
 
 Crée le site Hosting `nexus-ai` (donne l'URL `nexus-ai.web.app`) :
 
@@ -75,7 +97,7 @@ echo -n "LE_TOKEN" | gcloud secrets create FIREBASE_TOKEN --data-file=-
 gcloud builds submit --config cloudbuild.yaml
 ```
 
-## 3. Connexion sociale (Firebase Authentication)
+## 4. Connexion sociale (Firebase Authentication)
 
 Le front fait le popup Google/GitHub, récupère l'**ID token** Firebase et le
 poste à `POST /auth/firebase` ; le backend le vérifie avec Firebase Admin puis
@@ -108,7 +130,7 @@ vérification des tokens.
 > Tant que `firebase-config.js` contient les placeholders `REPLACE_…`, les
 > boutons sociaux affichent un message d'aide au lieu de lancer le popup.
 
-## 4. Résultat
+## 5. Résultat
 
 - Frontend : **https://nexus-ai.web.app**
 - Backend  : URL Cloud Run (référencée dans `frontend/js/config.js`)

@@ -3,22 +3,23 @@
 // ---------------------------------------------------------------
 //  Reproduces every route the frontend calls:
 //    POST   /auth/register        POST   /auth/login
+//    POST   /auth/firebase        (social sign-in)
 //    GET    /conversations        POST   /conversations
 //    PUT    /conversations/:id     DELETE /conversations/:id
 //    POST   /chat                 (Groq proxy)
 //    GET    /user/settings        PUT    /user/settings
+//    PUT    /user/phone
 //    PUT    /user/memory          DELETE /user/memory/:index
 //
-//  Storage is IN-MEMORY by default so you can boot it instantly.
-//  For production, swap the `store` object for Firestore / a DB
-//  (see the TODO markers). Nothing else needs to change.
+//  Persistence lives in store.js: Cloud Firestore when
+//  USE_FIRESTORE=true, in-memory otherwise (dev default).
 // ===============================================================
 
 import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { randomUUID } from 'node:crypto';
+import { getStore, randomUUID } from './store.js';
 
 const app = express();
 app.use(cors());                       // allow the Firebase-hosted frontend
@@ -39,13 +40,8 @@ const ALLOWED_MODELS = new Set([
   'gemma2-9b-it',
 ]);
 
-// ---------------------------------------------------------------
-//  IN-MEMORY STORE  (TODO: replace with Firestore for production)
-// ---------------------------------------------------------------
-const store = {
-  users: new Map(),          // email -> { id, username, email, passwordHash, settings, memory, sidebarState }
-  conversations: new Map(),  // convId -> { _id, userId, title, messages, history, createdAt }
-};
+// Persistence backend (Firestore or in-memory) — see store.js.
+const store = await getStore();
 
 // ---------------------------------------------------------------
 //  HELPERS
@@ -91,13 +87,13 @@ async function ensureFirebase() {
   return firebaseReady;
 }
 
-function auth(req, res, next) {
+async function auth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Non authentifié.' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    const user = [...store.users.values()].find(u => u.id === payload.id);
+    const user = await store.usersGetById(payload.id);
     if (!user) return res.status(401).json({ error: 'Session invalide.' });
     req.user = user;
     next();
@@ -109,7 +105,7 @@ function auth(req, res, next) {
 // ---------------------------------------------------------------
 //  HEALTH
 // ---------------------------------------------------------------
-app.get('/', (_req, res) => res.json({ service: 'nexus-ai-backend', ok: true }));
+app.get('/', (_req, res) => res.json({ service: 'nexus-ai-backend', ok: true, storage: store.kind }));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 // ---------------------------------------------------------------
@@ -119,7 +115,7 @@ app.post('/auth/register', async (req, res) => {
   const { username, email, password, phone } = req.body || {};
   if (!username || !email || !password) return res.status(400).json({ error: 'Champs manquants.' });
   if (password.length < 6) return res.status(400).json({ error: 'Mot de passe trop court.' });
-  if (store.users.has(email)) return res.status(409).json({ error: 'Cet email est déjà utilisé.' });
+  if (await store.usersGetByEmail(email)) return res.status(409).json({ error: 'Cet email est déjà utilisé.' });
 
   // Phone is optional at register but validated when provided.
   let phoneValue = '';
@@ -135,18 +131,20 @@ app.post('/auth/register', async (req, res) => {
     email,
     phone: phoneValue,
     passwordHash: await bcrypt.hash(password, 10),
+    provider: 'password',
     settings: {},
     memory: [],
     sidebarState: 'visible',
+    createdAt: new Date().toISOString(),
   };
-  store.users.set(email, user);
+  await store.usersCreate(user);
   res.json({ token: signToken(user), user: publicUser(user) });
 });
 
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Champs manquants.' });
-  const user = store.users.get(email);
+  const user = await store.usersGetByEmail(email);
   if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
   }
@@ -166,19 +164,21 @@ app.post('/auth/firebase', async (req, res) => {
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
     const email = decoded.email || `${decoded.uid}@firebase.local`;
-    let user = store.users.get(email);
+    let user = await store.usersGetByEmail(email);
     if (!user) {
       user = {
         id: decoded.uid,
         username: decoded.name || (decoded.email ? decoded.email.split('@')[0] : 'user'),
         email,
+        phone: '',
         passwordHash: null,
         provider: (decoded.firebase && decoded.firebase.sign_in_provider) || 'firebase',
         settings: {},
         memory: [],
         sidebarState: 'visible',
+        createdAt: new Date().toISOString(),
       };
-      store.users.set(email, user);
+      await store.usersCreate(user);
     }
     res.json({ token: signToken(user), user: publicUser(user) });
   } catch (e) {
@@ -190,14 +190,11 @@ app.post('/auth/firebase', async (req, res) => {
 // ---------------------------------------------------------------
 //  CONVERSATIONS
 // ---------------------------------------------------------------
-app.get('/conversations', auth, (req, res) => {
-  const list = [...store.conversations.values()]
-    .filter(c => c.userId === req.user.id)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  res.json(list);
+app.get('/conversations', auth, async (req, res) => {
+  res.json(await store.convsListByUser(req.user.id));
 });
 
-app.post('/conversations', auth, (req, res) => {
+app.post('/conversations', auth, async (req, res) => {
   const conv = {
     _id: randomUUID(),
     userId: req.user.id,
@@ -206,24 +203,26 @@ app.post('/conversations', auth, (req, res) => {
     history: [],
     createdAt: new Date().toISOString(),
   };
-  store.conversations.set(conv._id, conv);
+  await store.convsCreate(conv);
   res.json(conv);
 });
 
-app.put('/conversations/:id', auth, (req, res) => {
-  const conv = store.conversations.get(req.params.id);
+app.put('/conversations/:id', auth, async (req, res) => {
+  const conv = await store.convsGet(req.params.id);
   if (!conv || conv.userId !== req.user.id) return res.status(404).json({ error: 'Introuvable.' });
   const { title, messages, history } = req.body || {};
-  if (title !== undefined) conv.title = title;
-  if (messages !== undefined) conv.messages = messages;
-  if (history !== undefined) conv.history = history;
-  res.json(conv);
+  const fields = {};
+  if (title !== undefined) fields.title = title;
+  if (messages !== undefined) fields.messages = messages;
+  if (history !== undefined) fields.history = history;
+  const updated = await store.convsUpdate(req.params.id, fields);
+  res.json(updated);
 });
 
-app.delete('/conversations/:id', auth, (req, res) => {
-  const conv = store.conversations.get(req.params.id);
+app.delete('/conversations/:id', auth, async (req, res) => {
+  const conv = await store.convsGet(req.params.id);
   if (!conv || conv.userId !== req.user.id) return res.status(404).json({ error: 'Introuvable.' });
-  store.conversations.delete(req.params.id);
+  await store.convsDelete(req.params.id);
   res.json({ ok: true });
 });
 
@@ -254,7 +253,7 @@ app.post('/chat', auth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------
-//  USER SETTINGS + MEMORY
+//  USER SETTINGS + PHONE + MEMORY
 // ---------------------------------------------------------------
 app.get('/user/settings', auth, (req, res) => {
   res.json({
@@ -264,36 +263,40 @@ app.get('/user/settings', auth, (req, res) => {
   });
 });
 
-app.put('/user/settings', auth, (req, res) => {
+app.put('/user/settings', auth, async (req, res) => {
   const { settings, sidebarState } = req.body || {};
   if (settings !== undefined) req.user.settings = settings;
   if (sidebarState !== undefined) req.user.sidebarState = sidebarState;
+  await store.usersSave(req.user);
   res.json({ ok: true });
 });
 
 // Update the user's phone number (from the login prompt or Settings).
-app.put('/user/phone', auth, (req, res) => {
+app.put('/user/phone', auth, async (req, res) => {
   const { phone } = req.body || {};
   if (phone === '' || phone === null) {
     req.user.phone = '';
-    return res.json({ ok: true, user: publicUser(req.user) });
+  } else {
+    const p = normalizePhone(phone);
+    if (!p) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
+    req.user.phone = p;
   }
-  const p = normalizePhone(phone);
-  if (!p) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
-  req.user.phone = p;
+  await store.usersSave(req.user);
   res.json({ ok: true, user: publicUser(req.user) });
 });
 
-app.put('/user/memory', auth, (req, res) => {
+app.put('/user/memory', auth, async (req, res) => {
   const { memory } = req.body || {};
   if (Array.isArray(memory)) req.user.memory = memory;
+  await store.usersSave(req.user);
   res.json({ ok: true, memory: req.user.memory });
 });
 
-app.delete('/user/memory/:index', auth, (req, res) => {
+app.delete('/user/memory/:index', auth, async (req, res) => {
   const i = parseInt(req.params.index, 10);
   if (Number.isInteger(i) && i >= 0 && i < (req.user.memory || []).length) {
     req.user.memory.splice(i, 1);
+    await store.usersSave(req.user);
   }
   res.json({ ok: true, memory: req.user.memory });
 });
