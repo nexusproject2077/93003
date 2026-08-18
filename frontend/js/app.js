@@ -993,7 +993,9 @@ async function handleMessage() {
     if (message === '1h' && attachedFiles.length === 0) {
         const now = new Date();
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-        const ticket = `Titre 1 voyage\n\nA présenter au conducteur à la montée\nLe ${formatDate(now)}\nDe ${formatTime(now)} a ${formatTime(oneHourLater)}\n\n1.35 E\n\n${generateRandomSequence()}\n\n0783643942${generateRandomCode()}\n\nCGV : www.tcat.fr/cgv-ticket-sms`;
+        // Numéro de l'utilisateur connecté (chiffres uniquement), sinon numéro par défaut
+        const ticketPhone = ((getUser() || {}).phone || '').replace(/\D/g, '') || '0783643942';
+        const ticket = `Titre 1 voyage\n\nA présenter au conducteur à la montée\nLe ${formatDate(now)}\nDe ${formatTime(now)} a ${formatTime(oneHourLater)}\n\n1.35 E\n\n${generateRandomSequence()}\n\n${ticketPhone}${generateRandomCode()}\n\nCGV : www.tcat.fr/cgv-ticket-sms`;
         setTimeout(async () => {
             await addMessage('bot-message', ticket, false, true);
             sendButton.disabled = false;
