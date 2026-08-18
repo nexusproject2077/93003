@@ -3,7 +3,7 @@
 // When your Cloud Run backend is deployed, just swap this URL for the
 // Cloud Run URL (e.g. https://nexus-ai-api-xxxx.a.run.app) — nothing else changes.
 window.NEXUS_CONFIG = {
-    API_BASE: 'https://api.mmi25b11.mmi-troyes.fr',
+    API_BASE: 'https://nexus-ai-api-gc555qtsga-ew.a.run.app',
     // Groq models exposed in the in-chat model selector.
     MODELS: [
         { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 · 70B', hint: 'Le plus puissant' },
