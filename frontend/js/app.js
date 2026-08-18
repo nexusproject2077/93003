@@ -77,12 +77,14 @@ window.handleLogin = async function() {
 window.handleRegister = async function() {
     const username = document.getElementById('register-username').value.trim();
     const email    = document.getElementById('register-email').value.trim();
+    const phone    = document.getElementById('register-phone').value.trim();
     const password = document.getElementById('register-password').value;
     const errorEl  = document.getElementById('register-error');
     const btn      = document.getElementById('register-btn');
 
     if (!username || !email || !password) { errorEl.textContent = 'Remplis tous les champs.'; return; }
     if (password.length < 6) { errorEl.textContent = 'Mot de passe trop court (6 caractères min).'; return; }
+    if (phone && !isValidPhone(phone)) { errorEl.textContent = 'Numéro de téléphone invalide.'; return; }
 
     btn.disabled = true;
     btn.querySelector('span').textContent = 'Création…';
@@ -92,7 +94,7 @@ window.handleRegister = async function() {
         const res  = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
+            body: JSON.stringify({ username, email, password, phone })
         });
         const data = await res.json();
         if (!res.ok) { errorEl.textContent = data.error || "Erreur lors de l'inscription."; return; }
@@ -135,6 +137,7 @@ function initChatPage() {
     loadConversationsFromServer();
     loadSettingsFromServer();
     initModelSelector();
+    maybePromptPhone();
 }
 
 // ===== ELEMENTS DOM =====
@@ -1344,6 +1347,8 @@ window.openSettings = function() {
         const eEl = id('account-email');
         if (uEl) uEl.textContent = '@' + user.username;
         if (eEl) eEl.textContent = user.email || '—';
+        const pEl = id('s-phone');
+        if (pEl) pEl.value = user.phone || '';
     }
 };
 
@@ -1577,10 +1582,159 @@ window.useSuggestion = function(index) {
     userInput.setSelectionRange(userInput.value.length, userInput.value.length);
 };
 
-// ===== CONNEXION SOCIALE =====
-window.handleSocialAuth = function(provider) {
+// ===== CONNEXION SOCIALE (Firebase Authentication) =====
+let _firebaseApp = null;
+
+function firebaseConfigured() {
+    const c = window.FIREBASE_CONFIG || {};
+    return typeof firebase !== 'undefined' && c.apiKey && !String(c.apiKey).startsWith('REPLACE');
+}
+
+function initFirebase() {
+    if (_firebaseApp) return _firebaseApp;
+    if (!firebaseConfigured()) return null;
+    _firebaseApp = firebase.apps && firebase.apps.length
+        ? firebase.app()
+        : firebase.initializeApp(window.FIREBASE_CONFIG);
+    return _firebaseApp;
+}
+
+window.handleSocialAuth = async function(provider) {
     const label = provider === 'google' ? 'Google' : 'GitHub';
-    showToast(`Connexion ${label} bientôt disponible.`, '', 3000);
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '';
+
+    if (!firebaseConfigured()) {
+        showToast('Connexion sociale : configure Firebase dans frontend/js/firebase-config.js', 'error', 5000);
+        return;
+    }
+
+    initFirebase();
+    const authProvider = provider === 'google'
+        ? new firebase.auth.GoogleAuthProvider()
+        : new firebase.auth.GithubAuthProvider();
+
+    try {
+        const result = await firebase.auth().signInWithPopup(authProvider);
+        const idToken = await result.user.getIdToken();
+        const res = await fetch(`${API_BASE}/auth/firebase`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            if (errEl) errEl.textContent = data.error || `Connexion ${label} échouée.`;
+            return;
+        }
+        setAuth(data.token, data.user);
+        // Déconnexion du SDK Firebase : on garde uniquement notre JWT applicatif
+        try { await firebase.auth().signOut(); } catch {}
+        initChatPage();
+    } catch (e) {
+        if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) return;
+        if (e && e.code === 'auth/account-exists-with-different-credential') {
+            if (errEl) errEl.textContent = 'Un compte existe déjà avec cet email via un autre fournisseur.';
+            return;
+        }
+        console.error('Social auth error:', e);
+        if (errEl) errEl.textContent = `Connexion ${label} échouée.`;
+    }
+};
+
+// ===== NUMÉRO DE TÉLÉPHONE =====
+function isValidPhone(raw) {
+    if (typeof raw !== 'string') return false;
+    const digits = raw.replace(/\D/g, '');
+    return digits.length >= 6 && digits.length <= 20;
+}
+
+// Met à jour le user stocké localement (pour ne pas re-demander)
+function updateStoredUserPhone(phone) {
+    const user = getUser();
+    if (!user) return;
+    user.phone = phone;
+    localStorage.setItem('nexus_user', JSON.stringify(user));
+}
+
+async function saveUserPhone(phone) {
+    const res = await fetch(`${API_BASE}/user/phone`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ phone }),
+    });
+    if (res.status === 401) { handleLogout(); throw new Error('unauthorized'); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Erreur enregistrement du numéro.');
+    updateStoredUserPhone(data.user ? data.user.phone : phone);
+    return true;
+}
+
+// Affiche le pop-up à la connexion si aucun numéro n'est enregistré
+function maybePromptPhone() {
+    const user = getUser();
+    if (!user) return;
+    if (user.phone && String(user.phone).trim()) return;         // déjà renseigné
+    if (sessionStorage.getItem('nexus_phone_skipped')) return;    // reporté cette session
+    setTimeout(openPhonePrompt, 500);
+}
+
+function openPhonePrompt() {
+    const overlay = document.getElementById('phone-overlay');
+    if (!overlay) return;
+    const err = document.getElementById('phone-prompt-error');
+    if (err) err.textContent = '';
+    overlay.classList.remove('hidden');
+    const input = document.getElementById('phone-prompt-input');
+    if (input) { input.value = (getUser() || {}).phone || ''; setTimeout(() => input.focus(), 60); }
+}
+
+function closePhonePrompt() {
+    const overlay = document.getElementById('phone-overlay');
+    if (overlay) overlay.classList.add('hidden');
+}
+
+window.skipPhonePrompt = function() {
+    sessionStorage.setItem('nexus_phone_skipped', '1');
+    closePhonePrompt();
+};
+
+window.savePhoneFromPrompt = async function() {
+    const input = document.getElementById('phone-prompt-input');
+    const err   = document.getElementById('phone-prompt-error');
+    const btn   = document.getElementById('phone-save-btn');
+    const phone = (input?.value || '').trim();
+    if (err) err.textContent = '';
+    if (!isValidPhone(phone)) { if (err) err.textContent = 'Entre un numéro valide.'; return; }
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Enregistrement…';
+    try {
+        await saveUserPhone(phone);
+        closePhonePrompt();
+        showToast('Numéro enregistré.', 'success');
+    } catch (e) {
+        if (err) err.textContent = e.message || 'Erreur.';
+    } finally {
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'Enregistrer';
+    }
+};
+
+window.savePhoneFromSettings = async function() {
+    const input = document.getElementById('s-phone');
+    const btn   = document.getElementById('s-phone-save');
+    const phone = (input?.value || '').trim();
+    if (phone && !isValidPhone(phone)) { showToast('Numéro invalide.', 'error'); return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+    try {
+        await saveUserPhone(phone);
+        showToast('Numéro mis à jour.', 'success');
+        sessionStorage.setItem('nexus_phone_skipped', '1'); // ne plus re-demander
+    } catch (e) {
+        showToast(e.message || 'Erreur.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
+    }
 };
 
 // ===== LIQUID GLASS HEADER SCROLL EFFECT =====

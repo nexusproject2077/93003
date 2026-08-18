@@ -30,7 +30,29 @@ gcloud artifacts repositories create nexus --repository-format=docker --location
 > Remplace `MON_PROJECT_ID` par ton vrai ID, puis mets-le dans **`.firebaserc`**
 > à la place de `REPLACE_WITH_YOUR_GCP_PROJECT_ID`.
 
-## 1. Backend → Cloud Run
+## 1. Base de données → Firestore
+
+Le backend persiste les comptes, conversations, paramètres, mémoire et numéros
+de téléphone dans **Cloud Firestore** (mode Native) quand `USE_FIRESTORE=true`
+(déjà réglé dans `backend/cloudbuild.yaml`).
+
+```bash
+# Créer la base Firestore (mode Native) dans la même région que Cloud Run
+gcloud firestore databases create --location=europe-west1
+
+# Le compte de service Cloud Run doit pouvoir lire/écrire Firestore
+PROJECT_NUMBER=$(gcloud projects describe MON_PROJECT_ID --format='value(projectNumber)')
+gcloud projects add-iam-policy-binding MON_PROJECT_ID \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/datastore.user"
+```
+
+> L'accès à Firestore passe uniquement par le backend (Admin SDK, qui contourne
+> les règles de sécurité) : aucune règle Firestore côté client n'est nécessaire.
+> En local, mets `USE_FIRESTORE=false` (défaut) pour rester en mémoire, ou pointe
+> `GOOGLE_APPLICATION_CREDENTIALS` vers une clé de compte de service pour tester.
+
+## 2. Backend → Cloud Run
 
 ```bash
 # Secrets (jamais dans le code)
@@ -45,15 +67,15 @@ for S in GROQ_API_KEY JWT_SECRET; do
     --role="roles/secretmanager.secretAccessor"
 done
 
-# Build + deploy
+# Build + deploy (guillemets autour des substitutions — requis sur PowerShell)
 gcloud builds submit --config backend/cloudbuild.yaml \
-  --substitutions=_REGION=europe-west1,_SERVICE=nexus-ai-api
+  --substitutions="_REGION=europe-west1,_SERVICE=nexus-ai-api"
 ```
 
 À la fin, Cloud Run affiche une URL type `https://nexus-ai-api-xxxx.a.run.app`.
 Copie-la dans **`frontend/js/config.js`** (`API_BASE`).
 
-## 2. Frontend → Firebase Hosting
+## 3. Frontend → Firebase Hosting
 
 Crée le site Hosting `nexus-ai` (donne l'URL `nexus-ai.web.app`) :
 
@@ -75,7 +97,40 @@ echo -n "LE_TOKEN" | gcloud secrets create FIREBASE_TOKEN --data-file=-
 gcloud builds submit --config cloudbuild.yaml
 ```
 
-## 3. Résultat
+## 4. Connexion sociale (Firebase Authentication)
+
+Le front fait le popup Google/GitHub, récupère l'**ID token** Firebase et le
+poste à `POST /auth/firebase` ; le backend le vérifie avec Firebase Admin puis
+émet le JWT applicatif habituel (les autres routes ne changent pas).
+
+### a. Activer les fournisseurs
+
+Console Firebase → **Authentication → Sign-in method** → activer **Google** et
+**GitHub**.
+
+- **GitHub** : crée une OAuth App sur GitHub
+  (Settings → Developer settings → OAuth Apps).
+  - *Authorization callback URL* : `https://REPLACE_PROJECT_ID.firebaseapp.com/__/auth/handler`
+  - Colle le *Client ID* / *Client secret* dans Firebase.
+- **Authorized domains** (Authentication → Settings) : ajoute `nexus-ai.web.app`
+  (et `localhost` pour le dev).
+
+### b. Config front
+
+Authentication → *Project settings → General → Your apps* : copie `apiKey`,
+`authDomain`, `projectId`, `appId` dans **`frontend/js/firebase-config.js`**.
+
+### c. Backend
+
+Rien à faire sur Cloud Run : Firebase Admin utilise les *Application Default
+Credentials* et lit `GOOGLE_CLOUD_PROJECT` automatiquement. En local, exporte
+`GOOGLE_APPLICATION_CREDENTIALS` vers une clé de compte de service pour tester la
+vérification des tokens.
+
+> Tant que `firebase-config.js` contient les placeholders `REPLACE_…`, les
+> boutons sociaux affichent un message d'aide au lieu de lancer le popup.
+
+## 5. Résultat
 
 - Frontend : **https://nexus-ai.web.app**
 - Backend  : URL Cloud Run (référencée dans `frontend/js/config.js`)
