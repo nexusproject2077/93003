@@ -5,8 +5,8 @@
   "targets": {
     "nexus-ai-2077": {
       "hosting": {
-        "nexus-ai": [
-          "nexus-ai"
+        "nexus-ai-608af": [
+          "nexus-ai-608af"
         ]
       }
     }

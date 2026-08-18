@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "nexus-ai",
+    "site": "nexus-ai-608af",
     "public": "frontend",
     "ignore": [
       "firebase.json",
