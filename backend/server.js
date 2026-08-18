@@ -55,7 +55,16 @@ function signToken(user) {
 }
 
 function publicUser(user) {
-  return { id: user.id, username: user.username, email: user.email };
+  return { id: user.id, username: user.username, email: user.email, phone: user.phone || '' };
+}
+
+// Light phone normalisation/validation: keep +, digits and spaces; 6-20 digits.
+function normalizePhone(raw) {
+  if (typeof raw !== 'string') return null;
+  const cleaned = raw.trim().replace(/[^\d+\s().-]/g, '');
+  const digits = cleaned.replace(/\D/g, '');
+  if (digits.length < 6 || digits.length > 20) return null;
+  return cleaned;
 }
 
 // ---------------------------------------------------------------
@@ -107,15 +116,24 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 //  AUTH
 // ---------------------------------------------------------------
 app.post('/auth/register', async (req, res) => {
-  const { username, email, password } = req.body || {};
+  const { username, email, password, phone } = req.body || {};
   if (!username || !email || !password) return res.status(400).json({ error: 'Champs manquants.' });
   if (password.length < 6) return res.status(400).json({ error: 'Mot de passe trop court.' });
   if (store.users.has(email)) return res.status(409).json({ error: 'Cet email est déjà utilisé.' });
+
+  // Phone is optional at register but validated when provided.
+  let phoneValue = '';
+  if (phone) {
+    const p = normalizePhone(phone);
+    if (!p) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
+    phoneValue = p;
+  }
 
   const user = {
     id: randomUUID(),
     username,
     email,
+    phone: phoneValue,
     passwordHash: await bcrypt.hash(password, 10),
     settings: {},
     memory: [],
@@ -251,6 +269,19 @@ app.put('/user/settings', auth, (req, res) => {
   if (settings !== undefined) req.user.settings = settings;
   if (sidebarState !== undefined) req.user.sidebarState = sidebarState;
   res.json({ ok: true });
+});
+
+// Update the user's phone number (from the login prompt or Settings).
+app.put('/user/phone', auth, (req, res) => {
+  const { phone } = req.body || {};
+  if (phone === '' || phone === null) {
+    req.user.phone = '';
+    return res.json({ ok: true, user: publicUser(req.user) });
+  }
+  const p = normalizePhone(phone);
+  if (!p) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
+  req.user.phone = p;
+  res.json({ ok: true, user: publicUser(req.user) });
 });
 
 app.put('/user/memory', auth, (req, res) => {

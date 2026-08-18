@@ -2759,3 +2759,144 @@ kbd {
     filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.6));
     flex-shrink: 0;
 }
+
+/* =====================================================================
+   NUMÉRO DE TÉLÉPHONE — hint, pop-up, champ paramètres
+   ===================================================================== */
+.auth-hint {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.32);
+    line-height: 1.4;
+    margin-top: 2px;
+}
+
+/* Overlay + modal */
+.phone-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fadeIn 0.2s ease;
+}
+.phone-overlay.hidden { display: none !important; }
+
+.phone-modal {
+    width: 100%;
+    max-width: 400px;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 28px 26px 22px;
+    text-align: center;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    animation: slideUp 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.phone-modal-icon {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    color: #00d2ff;
+    background: linear-gradient(135deg, rgba(0, 210, 255, 0.18), rgba(124, 40, 220, 0.16));
+    border: 1px solid rgba(0, 210, 255, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 20px rgba(0, 150, 255, 0.18);
+}
+
+.phone-modal-title {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    margin-bottom: 8px;
+}
+
+.phone-modal-desc {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: #94a3b8;
+    margin-bottom: 18px;
+}
+.phone-modal-desc strong { color: rgba(0, 210, 255, 0.85); font-weight: 600; }
+
+.phone-modal .auth-field { margin-bottom: 4px; }
+.phone-modal .auth-field input {
+    width: 100%;
+    padding: 11px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    outline: none;
+    text-align: center;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.phone-modal .auth-field input:focus {
+    border-color: rgba(0, 150, 255, 0.5);
+    box-shadow: 0 0 15px rgba(0, 150, 255, 0.3);
+}
+
+.phone-modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+.phone-skip-btn {
+    flex: 0 0 auto;
+    padding: 11px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.phone-skip-btn:hover { background: rgba(255, 255, 255, 0.09); color: rgba(255, 255, 255, 0.8); }
+
+.phone-save-btn {
+    flex: 1;
+    padding: 11px;
+    background: var(--grad-brand);
+    background-size: 160% auto;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 150, 255, 0.22);
+    transition: all 0.3s ease;
+}
+.phone-save-btn:hover { background-position: right center; box-shadow: 0 8px 30px rgba(0, 150, 255, 0.4); }
+.phone-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Champ téléphone dans les paramètres */
+.phone-setting-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.phone-setting-field .settings-input { width: 190px; }
+
+@media (max-width: 480px) {
+    .phone-setting-field { flex-direction: column; align-items: stretch; width: 100%; }
+    .phone-setting-field .settings-input { width: 100%; }
+}
