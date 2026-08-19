@@ -268,6 +268,7 @@ body {
     left: 0;
     top: 0;
     height: 100vh;
+    height: 100dvh; /* hauteur réelle visible (évite que le bas passe sous la barre iOS) */
     z-index: 100;
     overflow-y: auto;
 }
@@ -2628,9 +2629,12 @@ kbd {
 .sidebar-user {
     margin: 0;
     padding: 12px 14px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(6, 6, 15, 0.4);
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
 }
 
 /* ---- Champ de saisie : plus de respiration ---- */
