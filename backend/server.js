@@ -339,7 +339,7 @@ app.delete('/conversations/:id', auth, ah(async (req, res) => {
 // return an OpenAI-shaped payload, so the frontend needs no changes. We use
 // the native endpoint (not the OpenAI-compat one) because API keys pass as a
 // query param here, which works with every AI Studio key format.
-async function callGeminiNative(model, messages, key) {
+async function callGeminiNative(model, messages, key, images = []) {
   const systemText = messages
     .filter(m => m.role === 'system')
     .map(m => m.content).join('\n\n');
@@ -349,6 +349,16 @@ async function callGeminiNative(model, messages, key) {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: String(m.content ?? '') }],
     }));
+
+  // Attach real images to the latest user turn (native multimodal vision).
+  if (Array.isArray(images) && images.length && contents.length) {
+    const last = contents[contents.length - 1];
+    for (const img of images.slice(0, 4)) {
+      if (img && img.data) {
+        last.parts.push({ inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.data } });
+      }
+    }
+  }
 
   const body = { contents, generationConfig: { temperature: 0.7 } };
   if (systemText) body.systemInstruction = { parts: [{ text: systemText }] };
@@ -383,7 +393,7 @@ async function callGeminiNative(model, messages, key) {
 //  CHAT — multi-provider proxy (Groq via OpenAI-compat, Gemini native)
 // ---------------------------------------------------------------
 app.post('/chat', auth, ah(async (req, res) => {
-  const { messages, model } = req.body || {};
+  const { messages, model, images } = req.body || {};
   if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages requis.' });
 
   const chosenModel = MODEL_PROVIDER[model] ? model : DEFAULT_MODEL;
@@ -395,9 +405,9 @@ app.post('/chat', auth, ah(async (req, res) => {
   }
 
   try {
-    // ---- Gemini: native endpoint ----
+    // ---- Gemini: native endpoint (with multimodal image vision) ----
     if (providerName === 'gemini') {
-      const r = await callGeminiNative(chosenModel, messages, key);
+      const r = await callGeminiNative(chosenModel, messages, key, images);
       if (!r.ok) {
         console.error('Gemini error', chosenModel, r.status, r.error);
         const status = (r.status === 401 || r.status === 403) ? 502 : (r.status || 502);

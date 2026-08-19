@@ -927,6 +927,24 @@ async function getGroqAIResponse(message, searchContext = null) {
 
         conv.history.push({ role: 'user', content: fullMessage || 'Analyse ces fichiers' });
 
+        // Vision native : on envoie l'image réelle (compressée) au modèle, en plus
+        // de la description texte. Non stocké dans l'historique (trop lourd) — juste
+        // pour cette requête. Exploité par les modèles Gemini (multimodal).
+        let imagePayload = [];
+        try {
+            const imgs = attachedFiles.filter(f => f.kind === 'image' && f.preview);
+            for (const f of imgs.slice(0, 4)) {
+                const compressed = await compressImage(f.preview, 1024, 0.8); // dataURL JPEG
+                const comma = compressed.indexOf(',');
+                if (comma > -1) imagePayload.push({ mimeType: 'image/jpeg', data: compressed.slice(comma + 1) });
+            }
+        } catch {}
+
+        // La vision d'image ne marche que sur Gemini — on prévient si besoin.
+        if (imagePayload.length && !String(currentModel).startsWith('gemini')) {
+            showToast('Astuce : passe sur un modèle Gemini pour que l\'IA voie vraiment l\'image.', '', 4000);
+        }
+
         currentFetch = new AbortController();
         const _t0 = performance.now();
         const response = await fetch(`${API_BASE}/chat`, {
@@ -935,6 +953,7 @@ async function getGroqAIResponse(message, searchContext = null) {
             signal: currentFetch.signal,
             body: JSON.stringify({
                 model: currentModel,
+                images: imagePayload,
                 messages: [
                     { role: 'system', content: buildSystemPrompt() },
                     ...conv.history
