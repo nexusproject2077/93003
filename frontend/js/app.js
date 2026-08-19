@@ -5,8 +5,13 @@ const MODELS = NEXUS_CFG.MODELS || [{ id: 'llama-3.3-70b-versatile', label: 'Lla
 const TYPING_SPEED = 15;
 const TAVILY_KEY = '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';
 
-// ===== ÉTAT MODÈLE (sélecteur Groq) =====
+// ===== ÉTAT MODÈLE (sélecteur) =====
 let currentModel = localStorage.getItem('nexus_model') || NEXUS_CFG.DEFAULT_MODEL || MODELS[0].id;
+// Si un modèle périmé traîne dans le localStorage, on retombe sur le défaut.
+if (!MODELS.some(m => m.id === currentModel)) {
+    currentModel = NEXUS_CFG.DEFAULT_MODEL || MODELS[0].id;
+    try { localStorage.setItem('nexus_model', currentModel); } catch {}
+}
 function currentModelLabel() {
     return (MODELS.find(m => m.id === currentModel) || MODELS[0]).label;
 }
