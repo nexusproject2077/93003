@@ -11,7 +11,7 @@ window.NEXUS_CONFIG = {
         { id: 'mixtral-8x7b-32768',     label: 'Mixtral · 8x7B',  hint: 'Groq · grand contexte' },
         { id: 'gemma2-9b-it',           label: 'Gemma 2 · 9B',    hint: 'Groq · léger' },
         { id: 'gemini-2.5-flash',       label: 'Gemini 2.5 Flash', hint: 'Google · gros documents' },
-        { id: 'gemini-2.0-flash',       label: 'Gemini 2.0 Flash', hint: 'Google · rapide' },
+        { id: 'gemini-2.5-flash-lite',  label: 'Gemini 2.5 Flash-Lite', hint: 'Google · rapide' },
     ],
     DEFAULT_MODEL: 'llama-3.3-70b-versatile',
 };

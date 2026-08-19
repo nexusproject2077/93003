@@ -42,7 +42,7 @@ const MODEL_PROVIDER = {
   'mixtral-8x7b-32768':      'groq',
   'gemma2-9b-it':            'groq',
   'gemini-2.5-flash':        'gemini',
-  'gemini-2.0-flash':        'gemini',
+  'gemini-2.5-flash-lite':   'gemini',
 };
 
 const PROVIDERS = {
