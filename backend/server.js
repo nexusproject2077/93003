@@ -29,16 +29,26 @@ const PORT        = process.env.PORT || 8080;
 const JWT_SECRET  = process.env.JWT_SECRET || 'change-me-in-production';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// Google AI Studio exposes an OpenAI-compatible endpoint — same request shape.
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 const DEFAULT_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
-// Models the frontend dropdown is allowed to select (allow-list = safety).
-const ALLOWED_MODELS = new Set([
-  'llama-3.3-70b-versatile',
-  'llama-3.1-8b-instant',
-  'llama3-70b-8192',
-  'mixtral-8x7b-32768',
-  'gemma2-9b-it',
-]);
+// Allow-listed models → which provider serves them (safety + routing).
+const MODEL_PROVIDER = {
+  'llama-3.3-70b-versatile': 'groq',
+  'llama-3.1-8b-instant':    'groq',
+  'llama3-70b-8192':         'groq',
+  'mixtral-8x7b-32768':      'groq',
+  'gemma2-9b-it':            'groq',
+  'gemini-2.5-flash':        'gemini',
+  'gemini-2.5-flash-lite':   'gemini',
+};
+
+const PROVIDERS = {
+  groq:   { url: GROQ_URL,   key: () => GROQ_API_KEY,   label: 'GROQ_API_KEY' },
+  gemini: { url: GEMINI_URL, key: () => GEMINI_API_KEY, label: 'GEMINI_API_KEY' },
+};
 
 // Persistence backend (Firestore or in-memory) — see store.js.
 const store = await getStore();
@@ -325,39 +335,101 @@ app.delete('/conversations/:id', auth, ah(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Call Gemini's NATIVE endpoint (models/{model}:generateContent?key=...) and
+// return an OpenAI-shaped payload, so the frontend needs no changes. We use
+// the native endpoint (not the OpenAI-compat one) because API keys pass as a
+// query param here, which works with every AI Studio key format.
+async function callGeminiNative(model, messages, key) {
+  const systemText = messages
+    .filter(m => m.role === 'system')
+    .map(m => m.content).join('\n\n');
+  const contents = messages
+    .filter(m => m.role !== 'system')
+    .map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: String(m.content ?? '') }],
+    }));
+
+  const body = { contents, generationConfig: { temperature: 0.7 } };
+  if (systemText) body.systemInstruction = { parts: [{ text: systemText }] };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const raw = await resp.json();
+  if (!resp.ok) {
+    return { ok: false, status: resp.status, error: (raw && raw.error && raw.error.message) || 'Erreur Gemini.' };
+  }
+  const parts = (raw.candidates && raw.candidates[0] && raw.candidates[0].content && raw.candidates[0].content.parts) || [];
+  const text = parts.map(p => p.text || '').join('');
+  const u = raw.usageMetadata || {};
+  return {
+    ok: true,
+    data: {
+      choices: [{ message: { role: 'assistant', content: text }, finish_reason: 'stop' }],
+      usage: {
+        prompt_tokens: u.promptTokenCount,
+        completion_tokens: u.candidatesTokenCount,
+        total_tokens: u.totalTokenCount,
+      },
+    },
+  };
+}
+
 // ---------------------------------------------------------------
-//  CHAT — Groq proxy
+//  CHAT — multi-provider proxy (Groq via OpenAI-compat, Gemini native)
 // ---------------------------------------------------------------
 app.post('/chat', auth, ah(async (req, res) => {
-  if (!GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY non configurée sur le serveur.' });
   const { messages, model } = req.body || {};
   if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages requis.' });
 
-  const chosenModel = ALLOWED_MODELS.has(model) ? model : DEFAULT_MODEL;
+  const chosenModel = MODEL_PROVIDER[model] ? model : DEFAULT_MODEL;
+  const providerName = MODEL_PROVIDER[chosenModel];
+  const provider = PROVIDERS[providerName];
+  const key = provider.key();
+  if (!key) {
+    return res.status(500).json({ error: `${provider.label} non configurée sur le serveur.` });
+  }
+
   try {
-    const upstream = await fetch(GROQ_URL, {
+    // ---- Gemini: native endpoint ----
+    if (providerName === 'gemini') {
+      const r = await callGeminiNative(chosenModel, messages, key);
+      if (!r.ok) {
+        console.error('Gemini error', chosenModel, r.status, r.error);
+        const status = (r.status === 401 || r.status === 403) ? 502 : (r.status || 502);
+        return res.status(status).json({ error: String(r.error) });
+      }
+      return res.status(200).json(r.data);
+    }
+
+    // ---- Groq (and any OpenAI-compatible provider) ----
+    const upstream = await fetch(provider.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${key}`,
       },
       body: JSON.stringify({ model: chosenModel, messages, temperature: 0.7 }),
     });
     const data = await upstream.json();
     if (!upstream.ok) {
-      console.error('Groq error', upstream.status, data && data.error);
-      // Never surface Groq's 401/403 as-is: the frontend treats any 401 as
-      // "session expired" and logs the user out. Remap auth-ish upstream
-      // errors to 502 so the user stays logged in and sees a real message.
+      console.error('AI provider error', chosenModel, upstream.status, data && data.error);
+      // Never surface an upstream 401/403 as-is: the frontend treats any 401
+      // as "session expired" and logs the user out. Remap to 502 so the user
+      // stays logged in and sees a real message.
       const status = (upstream.status === 401 || upstream.status === 403) ? 502 : upstream.status;
       const message = (data && data.error && (data.error.message || data.error))
-        || 'Erreur du fournisseur IA (Groq). Vérifie la clé GROQ_API_KEY.';
+        || `Erreur du fournisseur IA. Vérifie la clé ${provider.label}.`;
       return res.status(status).json({ error: String(message) });
     }
     res.status(200).json(data);
   } catch (err) {
-    console.error('Groq error:', err);
-    res.status(502).json({ error: 'Erreur de communication avec Groq.' });
+    console.error('AI provider error:', err);
+    res.status(502).json({ error: 'Erreur de communication avec le fournisseur IA.' });
   }
 }));
 
