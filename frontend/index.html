@@ -663,27 +663,31 @@
                     <div class="settings-row">
                         <div>
                             <span class="settings-label">Plan actuel</span>
-                            <p class="settings-desc">Nexus AI Gratuit</p>
+                            <p class="settings-desc" id="billing-plan">Gratuit</p>
                         </div>
-                        <button class="settings-action-btn">Mettre à niveau</button>
+                        <button class="settings-action-btn" id="billing-action" onclick="subscribeNow()">Passer à Pro</button>
                     </div>
                     <div class="settings-divider-thin"></div>
 
                     <div class="settings-row">
                         <div>
-                            <span class="settings-label">Moyen de paiement</span>
-                            <p class="settings-desc">Aucun moyen de paiement enregistré.</p>
+                            <span class="settings-label">Utilisation du jour</span>
+                            <p class="settings-desc" id="billing-usage">—</p>
                         </div>
-                        <button class="settings-action-btn">Ajouter</button>
                     </div>
                     <div class="settings-divider-thin"></div>
 
-                    <div class="settings-row">
-                        <div>
-                            <span class="settings-label">Historique de facturation</span>
-                            <p class="settings-desc">Consultez vos factures passées.</p>
+                    <div class="billing-pro-card">
+                        <div class="billing-pro-head">
+                            <span class="billing-pro-name">Nexus Pro</span>
+                            <span class="billing-pro-price">18€<span>/mois</span></span>
                         </div>
-                        <button class="settings-action-btn">Voir les factures</button>
+                        <ul class="billing-pro-features">
+                            <li>Messages illimités (fini la limite quotidienne)</li>
+                            <li>Tous les modèles Groq + Gemini</li>
+                            <li>Vision d'image incluse</li>
+                            <li>Résiliable à tout moment</li>
+                        </ul>
                     </div>
                 </div>
 
@@ -944,6 +948,28 @@
             <div class="phone-modal-actions">
                 <button class="phone-skip-btn" onclick="skipPhonePrompt()">Plus tard</button>
                 <button class="phone-save-btn" id="phone-save-btn" onclick="savePhoneFromPrompt()"><span>Enregistrer</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== PAYWALL — NEXUS PRO ===== -->
+    <div id="paywall-overlay" class="phone-overlay hidden">
+        <div class="phone-modal paywall-modal">
+            <div class="phone-modal-icon paywall-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            </div>
+            <h2 class="phone-modal-title">Passe à Nexus Pro</h2>
+            <p class="phone-modal-desc">Tu as atteint ta limite gratuite de <strong id="paywall-limit">20</strong> messages par jour. Abonne-toi pour continuer <strong>sans limite</strong>.</p>
+            <div class="paywall-price"><span class="paywall-amount">18€</span><span class="paywall-period">/mois</span></div>
+            <ul class="paywall-features">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Messages illimités</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Tous les modèles Groq + Gemini</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Vision d'image incluse</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Résiliable à tout moment</li>
+            </ul>
+            <div class="phone-modal-actions">
+                <button class="phone-skip-btn" onclick="closePaywall()">Plus tard</button>
+                <button class="phone-save-btn" id="paywall-subscribe" onclick="subscribeNow()"><span>S'abonner — 18€/mois</span></button>
             </div>
         </div>
     </div>

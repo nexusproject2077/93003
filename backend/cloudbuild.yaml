@@ -41,7 +41,10 @@ steps:
       - --platform=managed
       - --allow-unauthenticated
       - --port=8080
-      - --set-env-vars=USE_FIRESTORE=true
+      - --set-env-vars=USE_FIRESTORE=true,APP_URL=https://nexus-ai-608af.web.app,FREE_DAILY_LIMIT=20
+      # To enable the Stripe subscription, create the 3 secrets (see DEPLOY.md)
+      # then append them here:
+      #   ,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_PRICE_ID=STRIPE_PRICE_ID:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest
       - --set-secrets=GROQ_API_KEY=GROQ_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest
 
 images:

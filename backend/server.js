@@ -23,7 +23,8 @@ import { getStore, randomUUID } from './store.js';
 
 const app = express();
 app.use(cors());                       // allow the Firebase-hosted frontend
-app.use(express.json({ limit: '12mb' })); // messages can carry file text
+// NOTE: express.json() is installed AFTER the Stripe webhook route below,
+// because Stripe signature verification needs the raw request body.
 
 const PORT        = process.env.PORT || 8080;
 const JWT_SECRET  = process.env.JWT_SECRET || 'change-me-in-production';
@@ -48,8 +49,79 @@ const PROVIDERS = {
   gemini: { url: GEMINI_URL, key: () => GEMINI_API_KEY, label: 'GEMINI_API_KEY' },
 };
 
+// ---- Quotas & billing ----
+const FREE_DAILY_LIMIT = parseInt(process.env.FREE_DAILY_LIMIT || '20', 10); // free messages / day
+const PRO_DAILY_LIMIT  = parseInt(process.env.PRO_DAILY_LIMIT  || '500', 10); // safety cap for Pro
+const APP_URL = (process.env.APP_URL || 'https://nexus-ai-608af.web.app').replace(/\/$/, '');
+const STRIPE_SECRET_KEY     = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_PRICE_ID       = process.env.STRIPE_PRICE_ID || '';       // recurring 18€/month price
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+
+function todayKey() { return new Date().toISOString().slice(0, 10); } // YYYY-MM-DD
+function dailyLimitFor(user) { return user.plan === 'pro' ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT; }
+
 // Persistence backend (Firestore or in-memory) — see store.js.
 const store = await getStore();
+
+// ---------------------------------------------------------------
+//  STRIPE (lazy) — subscription checkout + webhook
+// ---------------------------------------------------------------
+let _stripe = null;
+async function getStripe() {
+  if (_stripe) return _stripe;
+  if (!STRIPE_SECRET_KEY) return null;
+  const Stripe = (await import('stripe')).default;
+  _stripe = new Stripe(STRIPE_SECRET_KEY);
+  return _stripe;
+}
+
+// Stripe webhook MUST read the raw body (for signature verification), so it is
+// registered BEFORE express.json(). It keeps a user's plan in sync with Stripe.
+app.post('/billing/webhook', express.raw({ type: '*/*' }), async (req, res) => {
+  const stripe = await getStripe();
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(503).send('billing disabled');
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Stripe signature error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    const setPlan = async (user, plan, extra = {}) => {
+      if (!user) return;
+      user.plan = plan;
+      Object.assign(user, extra);
+      await store.usersSave(user);
+    };
+
+    if (event.type === 'checkout.session.completed') {
+      const s = event.data.object;
+      const user = await store.usersGetById(s.client_reference_id);
+      await setPlan(user, 'pro', {
+        stripeCustomerId: s.customer || undefined,
+        stripeSubscriptionId: s.subscription || undefined,
+      });
+    } else if (event.type === 'customer.subscription.updated') {
+      const sub = event.data.object;
+      const user = await store.usersGetByStripeCustomer(sub.customer);
+      const active = sub.status === 'active' || sub.status === 'trialing';
+      await setPlan(user, active ? 'pro' : 'free');
+    } else if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      const user = await store.usersGetByStripeCustomer(sub.customer);
+      await setPlan(user, 'free');
+    }
+  } catch (err) {
+    console.error('Webhook handling error:', err);
+  }
+  res.json({ received: true });
+});
+
+// From here on, parse JSON bodies (messages can carry file text + images).
+app.use(express.json({ limit: '12mb' }));
 
 // Wrap async route handlers so a rejected promise (e.g. a Firestore
 // error) becomes a clean 500 instead of a hung request. Express 4 does
@@ -64,7 +136,7 @@ function signToken(user) {
 }
 
 function publicUser(user) {
-  return { id: user.id, username: user.username, email: user.email, phone: user.phone || '' };
+  return { id: user.id, username: user.username, email: user.email, phone: user.phone || '', plan: user.plan || 'free' };
 }
 
 // Light phone normalisation/validation: keep +, digits and spaces; 6-20 digits.
@@ -402,6 +474,30 @@ app.post('/chat', auth, ah(async (req, res) => {
     return res.status(500).json({ error: `${provider.label} non configurée sur le serveur.` });
   }
 
+  // ---- Daily quota (protects against runaway provider cost) ----
+  // Internal calls (background memory extraction) don't consume the visible
+  // message quota, but are still blocked once the cap is reached.
+  const isInternal = req.body && req.body.internal === true;
+  const limit = dailyLimitFor(req.user);
+  const day = todayKey();
+  let usage = req.user.usage || { day, count: 0 };
+  if (usage.day !== day) usage = { day, count: 0 };
+  if (usage.count >= limit) {
+    return res.status(402).json({
+      code: 'QUOTA_EXCEEDED',
+      error: req.user.plan === 'pro'
+        ? 'Limite quotidienne atteinte. Réessaie demain.'
+        : `Tu as atteint ta limite gratuite de ${limit} messages/jour. Passe à Nexus Pro pour continuer sans limite.`,
+      plan: req.user.plan || 'free',
+      limit,
+    });
+  }
+  if (!isInternal) {
+    usage.count += 1;
+    req.user.usage = usage;
+    await store.usersSave(req.user);
+  }
+
   try {
     // ---- Gemini: native endpoint (with multimodal image vision) ----
     if (providerName === 'gemini') {
@@ -488,6 +584,41 @@ app.delete('/user/memory/:index', auth, ah(async (req, res) => {
     await store.usersSave(req.user);
   }
   res.json({ ok: true, memory: req.user.memory });
+}));
+
+// ---------------------------------------------------------------
+//  BILLING — quota status + Stripe subscription checkout (18€/mo)
+// ---------------------------------------------------------------
+app.get('/billing/status', auth, ah((req, res) => {
+  const day = todayKey();
+  const usage = (req.user.usage && req.user.usage.day === day) ? req.user.usage.count : 0;
+  const limit = dailyLimitFor(req.user);
+  res.json({
+    plan: req.user.plan || 'free',
+    usage,
+    limit,
+    remaining: Math.max(0, limit - usage),
+    billingEnabled: Boolean(STRIPE_SECRET_KEY && STRIPE_PRICE_ID),
+    price: '18€/mois',
+  });
+}));
+
+// Create a Stripe Checkout session for the monthly subscription.
+app.post('/billing/checkout', auth, ah(async (req, res) => {
+  const stripe = await getStripe();
+  if (!stripe || !STRIPE_PRICE_ID) {
+    return res.status(503).json({ error: 'Abonnement non configuré sur le serveur.' });
+  }
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+    client_reference_id: req.user.id,
+    customer_email: req.user.email,
+    success_url: `${APP_URL}/?checkout=success`,
+    cancel_url: `${APP_URL}/?checkout=cancel`,
+    allow_promotion_codes: true,
+  });
+  res.json({ url: session.url });
 }));
 
 // Central error handler — turns any thrown/rejected route error into a

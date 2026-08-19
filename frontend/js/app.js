@@ -969,6 +969,11 @@ async function getGroqAIResponse(message, searchContext = null) {
         currentFetch = null;
         if (!response.ok) {
             if (response.status === 401) { handleLogout(); return ''; }
+            if (response.status === 402) {
+                let d = {}; try { d = await response.json(); } catch {}
+                openPaywall(d);
+                return '';
+            }
             let msg = 'Erreur de connexion à Nexus AI. Réessaie dans quelques secondes.';
             try { const e = await response.json(); if (e && e.error) msg = e.error; } catch {}
             return msg;
@@ -1178,6 +1183,7 @@ async function extractAndSaveMemory(userMessage, aiResponse) {
             method: 'POST',
             headers: authHeaders(),
             body: JSON.stringify({
+                internal: true,
                 messages: [
                     {
                         role: 'system',
@@ -1378,6 +1384,7 @@ window.openSettings = function() {
         const pEl = id('s-phone');
         if (pEl) pEl.value = user.phone || '';
     }
+    refreshBillingStatus();
 };
 
 window.closeSettings = function() {
@@ -1765,6 +1772,79 @@ window.savePhoneFromSettings = async function() {
         if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
     }
 };
+
+// ===== ABONNEMENT / QUOTA (Nexus Pro) =====
+function openPaywall(data = {}) {
+    const overlay = document.getElementById('paywall-overlay');
+    if (!overlay) return;
+    const limitEl = document.getElementById('paywall-limit');
+    if (limitEl && data.limit) limitEl.textContent = data.limit;
+    overlay.classList.remove('hidden');
+}
+
+window.closePaywall = function() {
+    const overlay = document.getElementById('paywall-overlay');
+    if (overlay) overlay.classList.add('hidden');
+};
+
+window.subscribeNow = async function() {
+    const btn = document.getElementById('paywall-subscribe');
+    if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Redirection…'; }
+    try {
+        const res = await fetch(`${API_BASE}/billing/checkout`, { method: 'POST', headers: authHeaders() });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) {
+            showToast(data.error || 'Abonnement indisponible pour le moment.', 'error', 4000);
+            return;
+        }
+        window.location.href = data.url; // redirection vers Stripe Checkout
+    } catch {
+        showToast('Impossible de contacter le service de paiement.', 'error', 4000);
+    } finally {
+        if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'S\'abonner — 18€/mois'; }
+    }
+};
+
+// Récupère plan + quota et met à jour le user local + l'écran Facturation
+async function refreshBillingStatus() {
+    try {
+        const res = await fetch(`${API_BASE}/billing/status`, { headers: authHeaders() });
+        if (!res.ok) return null;
+        const s = await res.json();
+        const user = getUser();
+        if (user) { user.plan = s.plan; localStorage.setItem('nexus_user', JSON.stringify(user)); }
+        // Écran Paramètres › Facturation
+        const planEl = document.getElementById('billing-plan');
+        const usageEl = document.getElementById('billing-usage');
+        const btn = document.getElementById('billing-action');
+        if (planEl) planEl.textContent = s.plan === 'pro' ? 'Nexus Pro (18€/mois)' : 'Gratuit';
+        if (usageEl) usageEl.textContent = s.plan === 'pro'
+            ? `${s.usage} messages aujourd'hui`
+            : `${s.usage}/${s.limit} messages utilisés aujourd'hui`;
+        if (btn) {
+            if (s.plan === 'pro') { btn.textContent = 'Abonnement actif'; btn.disabled = true; }
+            else { btn.textContent = 'Passer à Pro'; btn.disabled = false; btn.onclick = subscribeNow; }
+        }
+        return s;
+    } catch { return null; }
+}
+
+// Retour depuis Stripe Checkout (?checkout=success|cancel)
+(function handleCheckoutReturn() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const c = params.get('checkout');
+        if (!c) return;
+        // Nettoie l'URL
+        window.history.replaceState({}, '', window.location.pathname);
+        if (c === 'success') {
+            setTimeout(() => showToast('Bienvenue chez Nexus Pro ! Abonnement activé. 🎉', 'success', 4000), 600);
+            setTimeout(refreshBillingStatus, 1500); // le temps que le webhook passe
+        } else if (c === 'cancel') {
+            setTimeout(() => showToast('Abonnement annulé.', '', 3000), 400);
+        }
+    } catch {}
+})();
 
 // ===== LIQUID GLASS HEADER SCROLL EFFECT =====
 (function() {
