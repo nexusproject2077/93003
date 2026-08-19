@@ -335,21 +335,78 @@ app.delete('/conversations/:id', auth, ah(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Call Gemini's NATIVE endpoint (models/{model}:generateContent?key=...) and
+// return an OpenAI-shaped payload, so the frontend needs no changes. We use
+// the native endpoint (not the OpenAI-compat one) because API keys pass as a
+// query param here, which works with every AI Studio key format.
+async function callGeminiNative(model, messages, key) {
+  const systemText = messages
+    .filter(m => m.role === 'system')
+    .map(m => m.content).join('\n\n');
+  const contents = messages
+    .filter(m => m.role !== 'system')
+    .map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: String(m.content ?? '') }],
+    }));
+
+  const body = { contents, generationConfig: { temperature: 0.7 } };
+  if (systemText) body.systemInstruction = { parts: [{ text: systemText }] };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const raw = await resp.json();
+  if (!resp.ok) {
+    return { ok: false, status: resp.status, error: (raw && raw.error && raw.error.message) || 'Erreur Gemini.' };
+  }
+  const parts = (raw.candidates && raw.candidates[0] && raw.candidates[0].content && raw.candidates[0].content.parts) || [];
+  const text = parts.map(p => p.text || '').join('');
+  const u = raw.usageMetadata || {};
+  return {
+    ok: true,
+    data: {
+      choices: [{ message: { role: 'assistant', content: text }, finish_reason: 'stop' }],
+      usage: {
+        prompt_tokens: u.promptTokenCount,
+        completion_tokens: u.candidatesTokenCount,
+        total_tokens: u.totalTokenCount,
+      },
+    },
+  };
+}
+
 // ---------------------------------------------------------------
-//  CHAT — multi-provider proxy (Groq / Gemini), OpenAI-compatible
+//  CHAT — multi-provider proxy (Groq via OpenAI-compat, Gemini native)
 // ---------------------------------------------------------------
 app.post('/chat', auth, ah(async (req, res) => {
   const { messages, model } = req.body || {};
   if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages requis.' });
 
   const chosenModel = MODEL_PROVIDER[model] ? model : DEFAULT_MODEL;
-  const provider = PROVIDERS[MODEL_PROVIDER[chosenModel]];
+  const providerName = MODEL_PROVIDER[chosenModel];
+  const provider = PROVIDERS[providerName];
   const key = provider.key();
   if (!key) {
     return res.status(500).json({ error: `${provider.label} non configurée sur le serveur.` });
   }
 
   try {
+    // ---- Gemini: native endpoint ----
+    if (providerName === 'gemini') {
+      const r = await callGeminiNative(chosenModel, messages, key);
+      if (!r.ok) {
+        console.error('Gemini error', chosenModel, r.status, r.error);
+        const status = (r.status === 401 || r.status === 403) ? 502 : (r.status || 502);
+        return res.status(status).json({ error: String(r.error) });
+      }
+      return res.status(200).json(r.data);
+    }
+
+    // ---- Groq (and any OpenAI-compatible provider) ----
     const upstream = await fetch(provider.url, {
       method: 'POST',
       headers: {
