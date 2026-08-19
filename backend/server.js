@@ -344,7 +344,17 @@ app.post('/chat', auth, ah(async (req, res) => {
       body: JSON.stringify({ model: chosenModel, messages, temperature: 0.7 }),
     });
     const data = await upstream.json();
-    res.status(upstream.status).json(data);
+    if (!upstream.ok) {
+      console.error('Groq error', upstream.status, data && data.error);
+      // Never surface Groq's 401/403 as-is: the frontend treats any 401 as
+      // "session expired" and logs the user out. Remap auth-ish upstream
+      // errors to 502 so the user stays logged in and sees a real message.
+      const status = (upstream.status === 401 || upstream.status === 403) ? 502 : upstream.status;
+      const message = (data && data.error && (data.error.message || data.error))
+        || 'Erreur du fournisseur IA (Groq). Vérifie la clé GROQ_API_KEY.';
+      return res.status(status).json({ error: String(message) });
+    }
+    res.status(200).json(data);
   } catch (err) {
     console.error('Groq error:', err);
     res.status(502).json({ error: 'Erreur de communication avec Groq.' });

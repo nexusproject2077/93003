@@ -945,7 +945,9 @@ async function getGroqAIResponse(message, searchContext = null) {
         currentFetch = null;
         if (!response.ok) {
             if (response.status === 401) { handleLogout(); return ''; }
-            return 'Erreur de connexion a Nexus AI. Reessaie dans quelques secondes.';
+            let msg = 'Erreur de connexion à Nexus AI. Réessaie dans quelques secondes.';
+            try { const e = await response.json(); if (e && e.error) msg = e.error; } catch {}
+            return msg;
         }
 
         const data = await response.json();
