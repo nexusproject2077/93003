@@ -1642,7 +1642,8 @@ window.handleSocialAuth = async function(provider) {
             return;
         }
         console.error('Social auth error:', e);
-        if (errEl) errEl.textContent = `Connexion ${label} échouée.`;
+        const code = (e && (e.code || e.message)) ? ` (${e.code || e.message})` : '';
+        if (errEl) errEl.textContent = `Connexion ${label} échouée${code}.`;
     }
 };
 
