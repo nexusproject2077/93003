@@ -2295,6 +2295,13 @@ kbd {
     position: relative;
     z-index: 1;
 }
+/* La croix de fermeture reste positionnée en absolu (le sélecteur ci-dessus
+   la forçait en relative → elle tombait à gauche, à moitié coupée). */
+.settings-modal > .settings-close,
+.memory-modal > .memory-close-btn {
+    position: absolute;
+    z-index: 40;
+}
 
 /* =====================================================================
    LOGIN PREMIUM — Glassmorphism navy + Aurora + Social + Bouton dégradé
@@ -3051,4 +3058,56 @@ kbd {
     left: 0;
     color: #10b981;
     font-weight: 700;
+}
+
+/* =====================================================================
+   RESPONSIVE DÉFINITIF — Modale Paramètres (placé en fin de fichier pour
+   gagner l'ordre de cascade sur les règles de base plus haut).
+   Corrige : modale plus large que l'écran + croix de fermeture coupée.
+   ===================================================================== */
+.settings-overlay { overflow: hidden; }
+.settings-modal { box-sizing: border-box; }
+
+@media (max-width: 768px) {
+    .settings-overlay {
+        padding: 0;
+        align-items: flex-end;      /* bottom sheet */
+        justify-content: center;
+    }
+    .settings-modal {
+        width: 100%;
+        max-width: 100%;            /* ne dépasse jamais l'écran */
+        height: 92dvh;
+        max-height: 92dvh;
+        border-radius: 20px 20px 0 0;
+        flex-direction: column;
+    }
+    /* Barre d'onglets horizontale : dégage la croix, défile toute seule */
+    .settings-nav {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-height: 52px;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 58px 8px 10px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        -webkit-overflow-scrolling: touch;
+    }
+    .settings-nav::-webkit-scrollbar { display: none; }
+    .settings-nav-item { white-space: nowrap; flex-shrink: 0; }
+    .settings-nav-item svg { display: none; }
+    .settings-content { width: 100%; }
+    .settings-panel { padding: 18px 16px calc(28px + env(safe-area-inset-bottom, 0px)); }
+    /* Croix toujours visible en haut à droite, au-dessus de la barre d'onglets */
+    .settings-close {
+        top: 10px;
+        right: 10px;
+        width: 34px;
+        height: 34px;
+        z-index: 40;
+    }
 }
