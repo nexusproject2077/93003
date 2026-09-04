@@ -16,6 +16,52 @@ function currentModelLabel() {
     return (MODELS.find(m => m.id === currentModel) || MODELS[0]).label;
 }
 
+// ===== FOURNISSEUR D'INFÉRENCE (badge dynamique) =====
+// Groq ne fait PAS tourner Gemini : le badge suit le modèle sélectionné.
+const PROVIDER_BADGES = {
+    groq: {
+        text: 'Propulsé par Groq',
+        title: 'Inférence Groq (LPU) — réponses instantanées',
+        cls: 'provider-groq',
+        icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+    },
+    gemini: {
+        text: 'Propulsé par Gemini API',
+        title: 'Google Gemini API — multimodal (vision + gros documents)',
+        cls: 'provider-gemini',
+        icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.4 4.6 3.4 7.6 8 8-4.6.4-7.6 3.4-8 8-.4-4.6-3.4-7.6-8-8 4.6-.4 7.6-3.4 8-8z"/></svg>',
+    },
+};
+function currentModelProvider() {
+    const m = MODELS.find(m => m.id === currentModel);
+    if (m && m.provider) return m.provider;
+    return String(currentModel).startsWith('gemini') ? 'gemini' : 'groq';
+}
+function currentProviderBadge() {
+    return PROVIDER_BADGES[currentModelProvider()] || PROVIDER_BADGES.groq;
+}
+function updatePoweredBadge() {
+    const b = currentProviderBadge();
+    // Badge de la barre d'outils (haut)
+    const badge = document.getElementById('powered-tag');
+    if (badge) {
+        const iconEl = document.getElementById('powered-icon');
+        const textEl = document.getElementById('powered-text');
+        if (iconEl) iconEl.innerHTML = b.icon;
+        if (textEl) textEl.textContent = b.text;
+        badge.title = b.title;
+        badge.classList.remove('provider-groq', 'provider-gemini');
+        badge.classList.add(b.cls);
+    }
+    // Bannière de l'écran d'accueil (centre)
+    const banner = document.getElementById('provider-banner');
+    if (banner) {
+        banner.classList.remove('provider-groq', 'provider-gemini');
+        banner.classList.add(b.cls);
+        banner.innerHTML = `${b.icon.replace('width="12" height="12"', 'width="16" height="16"')} ${b.text} — <strong>${currentModelProvider() === 'gemini' ? 'Multimodal & vision' : 'Réponses instantanées'}</strong>`;
+    }
+}
+
 // ===== AUTH =====
 function getToken() { return localStorage.getItem('nexus_token'); }
 function getUser()  { return JSON.parse(localStorage.getItem('nexus_user') || 'null'); }
@@ -1509,6 +1555,7 @@ function initModelSelector() {
     const menu = document.getElementById('model-menu');
     const nameEl = document.getElementById('current-model-name');
     if (nameEl) nameEl.textContent = currentModelLabel();
+    updatePoweredBadge();
     if (!menu) return;
     menu.innerHTML = MODELS.map(m => `
         <button class="model-option${m.id === currentModel ? ' active' : ''}" data-model="${m.id}" onclick="selectModel('${m.id}')">
@@ -1532,6 +1579,7 @@ window.selectModel = function(id) {
     localStorage.setItem('nexus_model', id);
     const nameEl = document.getElementById('current-model-name');
     if (nameEl) nameEl.textContent = currentModelLabel();
+    updatePoweredBadge();
     initModelSelector();
     closeModelMenu();
     showToast('Modèle : ' + currentModelLabel(), 'success', 1600);
@@ -1592,13 +1640,11 @@ function renderEmptyState() {
     chatBox.innerHTML = `
         <div class="empty-state" id="empty-state">
             <div class="empty-logo"><span class="nexus-logo">NEXUS</span> <span class="ai-label">AI</span></div>
-            <div class="groq-banner">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                Propulsé par Groq — <strong>Réponses instantanées</strong>
-            </div>
+            <div class="groq-banner" id="provider-banner"></div>
             <p class="empty-subtitle">Par où veux-tu commencer ?</p>
             <div class="suggestion-grid">${cards}</div>
         </div>`;
+    updatePoweredBadge();
 }
 
 function removeEmptyState() {

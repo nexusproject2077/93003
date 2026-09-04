@@ -964,6 +964,13 @@ h1 {
     box-shadow: none;
 }
 
+/* Icônes de la barre d'input : centrage vertical parfait (pas de décalage baseline) */
+#input-container > * { align-self: center; }
+#home-btn svg,
+#attach-file-btn svg,
+#send-button svg,
+#stop-button svg { display: block; }
+
 /* ===== FOOTER ===== */
 .footer {
     text-align: center;
@@ -1800,7 +1807,7 @@ kbd {
     transition: border-color 0.2s ease;
 }
 
-.sidebar-search input::placeholder { color: rgba(255, 255, 255, 0.2); }
+.sidebar-search input::placeholder { color: #64748b; opacity: 1; }
 .sidebar-search input:focus { border-color: rgba(0, 210, 255, 0.22); }
 
 /* ===== TOAST ===== */
@@ -2478,7 +2485,7 @@ kbd {
 .model-option-main { font-size: 0.83rem; font-weight: 600; }
 .model-option-hint { font-size: 0.7rem; color: rgba(255, 255, 255, 0.4); }
 
-/* ---- Badge "Propulsé par Groq" ---- */
+/* ---- Badge fournisseur dynamique (Groq / Gemini) ---- */
 .powered-tag {
     display: inline-flex;
     align-items: center;
@@ -2487,12 +2494,23 @@ kbd {
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: rgba(0, 210, 255, 0.85);
+    border-radius: 20px;
+    transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+.powered-tag .powered-icon { display: inline-flex; }
+.powered-tag svg { filter: drop-shadow(0 0 4px currentColor); }
+/* Groq — cyan */
+.powered-tag.provider-groq {
+    color: rgba(0, 210, 255, 0.9);
     background: rgba(0, 210, 255, 0.06);
     border: 1px solid rgba(0, 210, 255, 0.15);
-    border-radius: 20px;
 }
-.powered-tag svg { color: #00d2ff; filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.6)); }
+/* Gemini — violet/bleu Google */
+.powered-tag.provider-gemini {
+    color: rgba(148, 130, 255, 0.95);
+    background: rgba(120, 100, 255, 0.08);
+    border: 1px solid rgba(140, 120, 255, 0.22);
+}
 
 /* ---- Compteur de vitesse fantôme (Tokens/s) ---- */
 .speed-meter {
@@ -2574,8 +2592,23 @@ kbd {
     border-radius: 24px;
     box-shadow: 0 0 24px rgba(0, 150, 255, 0.12);
 }
-.groq-banner strong { color: #00d2ff; }
-.groq-banner svg { color: #00d2ff; filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.7)); }
+.groq-banner { --provider-accent: #00d2ff; }
+.groq-banner strong { color: var(--provider-accent); }
+.groq-banner svg { color: var(--provider-accent); filter: drop-shadow(0 0 5px var(--provider-accent)); }
+/* Groq — cyan (défaut) */
+.groq-banner.provider-groq {
+    --provider-accent: #00d2ff;
+    background: rgba(0, 210, 255, 0.07);
+    border-color: rgba(0, 210, 255, 0.2);
+    box-shadow: 0 0 24px rgba(0, 150, 255, 0.12);
+}
+/* Gemini — violet Google */
+.groq-banner.provider-gemini {
+    --provider-accent: #a99bff;
+    background: rgba(120, 100, 255, 0.08);
+    border-color: rgba(140, 120, 255, 0.24);
+    box-shadow: 0 0 24px rgba(120, 100, 255, 0.14);
+}
 .empty-subtitle {
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.35);
@@ -2594,10 +2627,10 @@ kbd {
     align-items: center;
     gap: 10px;
     padding: 14px 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 14px;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(255, 255, 255, 0.88);
     font-family: var(--font-sans);
     font-size: 0.85rem;
     font-weight: 500;
@@ -2611,7 +2644,19 @@ kbd {
     transform: translateY(-2px);
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 150, 255, 0.08);
 }
-.suggestion-icon { font-size: 1.25rem; flex-shrink: 0; }
+.suggestion-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(0, 210, 255, 0.09);
+    color: #00d2ff;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.suggestion-icon svg { width: 17px; height: 17px; }
 
 /* ---- Sidebar : recherche en haut avec icône ---- */
 .sidebar-search { position: relative; padding: 0; }
@@ -2620,7 +2665,7 @@ kbd {
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.3);
+    color: #64748b;
     pointer-events: none;
 }
 .sidebar-search input { padding-left: 32px; }
