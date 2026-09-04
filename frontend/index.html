@@ -387,17 +387,27 @@
                     <h2 class="settings-title">Notifications</h2>
                     <div class="settings-divider"></div>
 
+                    <div class="notif-head">
+                        <div>
+                            <span class="settings-label">Notifications push</span>
+                            <p class="settings-desc" id="notif-perm-desc">Tout est désactivé par défaut. Active les catégories souhaitées : ton navigateur te demandera l'autorisation d'envoyer des notifications.</p>
+                        </div>
+                        <button type="button" class="notif-test-btn" id="notif-test-btn" onclick="testPush()">Tester</button>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
                     <div class="settings-row">
                         <div>
                             <span class="settings-label">Chats de groupe</span>
                             <p class="settings-desc">Vous recevrez des notifications pour les nouveaux messages dans les chats de groupe.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-group" onchange="saveSettings()">
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-group" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -406,12 +416,13 @@
                             <span class="settings-label">Codex</span>
                             <p class="settings-desc">Recevez des notifications sur les tâches Codex.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-codex" onchange="saveSettings()">
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-codex" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -420,12 +431,13 @@
                             <span class="settings-label">Projets</span>
                             <p class="settings-desc">Vous recevrez une notification à la réception d'une invitation par e-mail à rejoindre un projet partagé.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-projects" onchange="saveSettings()">
-                            <option value="email">E-mail</option>
-                            <option value="push">Push</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-projects" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -434,12 +446,13 @@
                             <span class="settings-label">Recommandations</span>
                             <p class="settings-desc">Vous recevrez des notifications sur les dernières nouveautés de Nexus AI (outils, fonctionnalités, conseils).</p>
                         </div>
-                        <select class="settings-select" id="s-notif-reco" onchange="saveSettings()">
-                            <option value="both">Push, e-mail</option>
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-reco" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -448,12 +461,13 @@
                             <span class="settings-label">Réponses</span>
                             <p class="settings-desc">Vous recevrez une notification lorsque Nexus AI répondra à des demandes qui prennent du temps, comme les recherches ou la génération d'images.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-replies" onchange="saveSettings()">
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-replies" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -462,12 +476,13 @@
                             <span class="settings-label">Tâches</span>
                             <p class="settings-desc">Recevez des notifications lorsque les tâches que vous avez créées sont mises à jour.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-tasks" onchange="saveSettings()">
-                            <option value="both">Push, e-mail</option>
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-tasks" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -476,12 +491,13 @@
                             <span class="settings-label">Utilisation</span>
                             <p class="settings-desc">Vous recevrez des notifications lorsque vos limites relatives aux fonctionnalités telles que la création d'images seront réinitialisées.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-usage" onchange="saveSettings()">
-                            <option value="both">Push, e-mail</option>
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-usage" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 

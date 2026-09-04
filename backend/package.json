@@ -17,6 +17,7 @@
     "express": "^4.19.2",
     "firebase-admin": "^12.7.0",
     "jsonwebtoken": "^9.0.2",
-    "stripe": "^17.5.0"
+    "stripe": "^17.5.0",
+    "web-push": "^3.6.7"
   }
 }

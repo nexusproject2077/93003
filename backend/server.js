@@ -60,6 +60,13 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 function todayKey() { return new Date().toISOString().slice(0, 10); } // YYYY-MM-DD
 function dailyLimitFor(user) { return user.plan === 'pro' ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT; }
 
+// ---- Web Push (notifications push réelles, via VAPID) ----
+const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT     = process.env.VAPID_SUBJECT || 'mailto:contact@nexus-ai.app';
+// Catégories de notification connues (doivent matcher le front).
+const NOTIF_CATEGORIES = ['group', 'codex', 'projects', 'reco', 'replies', 'tasks', 'usage'];
+
 // Persistence backend (Firestore or in-memory) — see store.js.
 const store = await getStore();
 
@@ -73,6 +80,47 @@ async function getStripe() {
   const Stripe = (await import('stripe')).default;
   _stripe = new Stripe(STRIPE_SECRET_KEY);
   return _stripe;
+}
+
+// ---------------------------------------------------------------
+//  WEB PUSH (lazy) — vraies notifications push via le protocole VAPID
+// ---------------------------------------------------------------
+let _webpush = null;
+async function getWebPush() {
+  if (_webpush) return _webpush;
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return null; // désactivé proprement
+  const webpush = (await import('web-push')).default;
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  _webpush = webpush;
+  return _webpush;
+}
+
+// Envoie une notification à tous les abonnements d'un utilisateur.
+// Élague automatiquement les abonnements expirés (404/410).
+async function sendPushToUser(user, payload) {
+  const webpush = await getWebPush();
+  if (!webpush || !user) return { sent: 0, disabled: !webpush };
+  const subs = Array.isArray(user.pushSubscriptions) ? user.pushSubscriptions : [];
+  if (subs.length === 0) return { sent: 0 };
+  const body = JSON.stringify(payload);
+  let sent = 0;
+  const alive = [];
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(sub, body);
+      sent++;
+      alive.push(sub);
+    } catch (err) {
+      // 404/410 = abonnement expiré → on le retire ; sinon on le garde.
+      if (err.statusCode !== 404 && err.statusCode !== 410) alive.push(sub);
+      else console.log('Push: abonnement expiré retiré');
+    }
+  }
+  if (alive.length !== subs.length) {
+    user.pushSubscriptions = alive;
+    await store.usersSave(user);
+  }
+  return { sent };
 }
 
 // Stripe webhook MUST read the raw body (for signature verification), so it is
@@ -619,6 +667,67 @@ app.post('/billing/checkout', auth, ah(async (req, res) => {
     allow_promotion_codes: true,
   });
   res.json({ url: session.url });
+}));
+
+// ---------------------------------------------------------------
+//  NOTIFICATIONS PUSH (Web Push / VAPID)
+// ---------------------------------------------------------------
+// Clé publique VAPID + état d'activation (public : le front en a besoin
+// pour s'abonner). Renvoie enabled:false tant que les clés ne sont pas
+// configurées → le front dégrade proprement.
+app.get('/push/config', (_req, res) => {
+  res.json({ enabled: Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY), publicKey: VAPID_PUBLIC_KEY || '' });
+});
+
+// Enregistre l'abonnement push du navigateur + les catégories choisies.
+app.post('/push/subscribe', auth, ah(async (req, res) => {
+  const { subscription, categories } = req.body || {};
+  if (!subscription || !subscription.endpoint) {
+    return res.status(400).json({ error: 'Abonnement invalide.' });
+  }
+  const subs = Array.isArray(req.user.pushSubscriptions) ? req.user.pushSubscriptions : [];
+  // Dédoublonnage par endpoint.
+  const next = subs.filter(s => s.endpoint !== subscription.endpoint);
+  next.push(subscription);
+  req.user.pushSubscriptions = next;
+  if (categories && typeof categories === 'object') {
+    const clean = {};
+    for (const c of NOTIF_CATEGORIES) clean[c] = Boolean(categories[c]);
+    req.user.pushCategories = clean;
+  }
+  await store.usersSave(req.user);
+  res.json({ ok: true, count: next.length });
+}));
+
+// Met à jour uniquement les catégories (toggles) sans re-souscrire.
+app.put('/push/categories', auth, ah(async (req, res) => {
+  const { categories } = req.body || {};
+  const clean = {};
+  for (const c of NOTIF_CATEGORIES) clean[c] = Boolean(categories && categories[c]);
+  req.user.pushCategories = clean;
+  await store.usersSave(req.user);
+  res.json({ ok: true, categories: clean });
+}));
+
+// Retire un abonnement (déconnexion / navigateur désabonné).
+app.post('/push/unsubscribe', auth, ah(async (req, res) => {
+  const { endpoint } = req.body || {};
+  const subs = Array.isArray(req.user.pushSubscriptions) ? req.user.pushSubscriptions : [];
+  req.user.pushSubscriptions = endpoint ? subs.filter(s => s.endpoint !== endpoint) : [];
+  await store.usersSave(req.user);
+  res.json({ ok: true });
+}));
+
+// Envoie une notification de test réelle à l'utilisateur connecté.
+app.post('/push/test', auth, ah(async (req, res) => {
+  const result = await sendPushToUser(req.user, {
+    title: 'Nexus AI',
+    body: 'Les notifications push sont activées ✓',
+    tag: 'nexus-test',
+  });
+  if (result.disabled) return res.status(503).json({ error: 'Push non configuré sur le serveur.' });
+  if (result.sent === 0) return res.status(409).json({ error: 'Aucun appareil abonné.' });
+  res.json({ ok: true, sent: result.sent });
 }));
 
 // Central error handler — turns any thrown/rejected route error into a

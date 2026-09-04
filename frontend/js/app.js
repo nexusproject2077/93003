@@ -1169,9 +1169,11 @@ let _userMemory = [];
 
 const defaultSettings = {
     theme: 'system', contrast: 'system', accent: '#00d2ff', langue: 'auto',
-    typingSpeed: 15, flashMode: false, vocalMode: false, notifGroup: 'push', notifCodex: 'push',
-    notifProjects: 'email', notifReco: 'both', notifReplies: 'push', notifTasks: 'both',
-    notifUsage: 'both', style: 'default', warm: 'default', enthusiastic: 'default',
+    typingSpeed: 15, flashMode: false, vocalMode: false,
+    // Notifications push : TOUT désactivé par défaut (l'utilisateur choisit).
+    notifGroup: false, notifCodex: false, notifProjects: false, notifReco: false,
+    notifReplies: false, notifTasks: false, notifUsage: false,
+    style: 'default', warm: 'default', enthusiastic: 'default',
     lists: 'default', emojis: 'default', quickReplies: true, instructions: '',
     alias: '', profession: '', about: '', memory: false, modelImprove: true,
     twoFA: false, contentFilter: false, safeMode: false, enterSend: true,
@@ -1203,6 +1205,7 @@ async function loadSettingsFromServer() {
         else document.documentElement.classList.remove('theme-light');
         if (s.contrast === 'high') document.documentElement.classList.add('contrast-high');
         else document.documentElement.classList.remove('contrast-high');
+        refreshPushOnLoad();
     } catch (err) {
         console.error('Erreur chargement settings:', err);
     }
@@ -1349,13 +1352,13 @@ function readSettingsFromDOM() {
         typingSpeed:   parseInt(g('s-typing-speed')?.value ?? defaultSettings.typingSpeed),
         flashMode:     g('s-flash-mode')?.checked ?? defaultSettings.flashMode,
         vocalMode:     g('s-vocal-mode')?.checked ?? defaultSettings.vocalMode,
-        notifGroup:    g('s-notif-group')?.value || defaultSettings.notifGroup,
-        notifCodex:    g('s-notif-codex')?.value || defaultSettings.notifCodex,
-        notifProjects: g('s-notif-projects')?.value || defaultSettings.notifProjects,
-        notifReco:     g('s-notif-reco')?.value || defaultSettings.notifReco,
-        notifReplies:  g('s-notif-replies')?.value || defaultSettings.notifReplies,
-        notifTasks:    g('s-notif-tasks')?.value || defaultSettings.notifTasks,
-        notifUsage:    g('s-notif-usage')?.value || defaultSettings.notifUsage,
+        notifGroup:    g('s-notif-group')?.checked ?? defaultSettings.notifGroup,
+        notifCodex:    g('s-notif-codex')?.checked ?? defaultSettings.notifCodex,
+        notifProjects: g('s-notif-projects')?.checked ?? defaultSettings.notifProjects,
+        notifReco:     g('s-notif-reco')?.checked ?? defaultSettings.notifReco,
+        notifReplies:  g('s-notif-replies')?.checked ?? defaultSettings.notifReplies,
+        notifTasks:    g('s-notif-tasks')?.checked ?? defaultSettings.notifTasks,
+        notifUsage:    g('s-notif-usage')?.checked ?? defaultSettings.notifUsage,
         style:         g('s-style')?.value || defaultSettings.style,
         warm:          g('s-warm')?.value || defaultSettings.warm,
         enthusiastic:  g('s-enthusiastic')?.value || defaultSettings.enthusiastic,
@@ -1387,10 +1390,11 @@ function populateSettingsDOM(s) {
     set('s-langue', s.langue); set('s-typing-speed', s.typingSpeed);
     check('s-flash-mode', s.flashMode);
     check('s-vocal-mode', s.vocalMode);
-    set('s-notif-group', s.notifGroup); set('s-notif-codex', s.notifCodex);
-    set('s-notif-projects', s.notifProjects); set('s-notif-reco', s.notifReco);
-    set('s-notif-replies', s.notifReplies); set('s-notif-tasks', s.notifTasks);
-    set('s-notif-usage', s.notifUsage); set('s-style', s.style);
+    check('s-notif-group', s.notifGroup); check('s-notif-codex', s.notifCodex);
+    check('s-notif-projects', s.notifProjects); check('s-notif-reco', s.notifReco);
+    check('s-notif-replies', s.notifReplies); check('s-notif-tasks', s.notifTasks);
+    check('s-notif-usage', s.notifUsage);
+    set('s-style', s.style);
     set('s-warm', s.warm); set('s-enthusiastic', s.enthusiastic);
     set('s-lists', s.lists); set('s-emojis', s.emojis);
     check('s-quick-replies', s.quickReplies);
@@ -1421,6 +1425,135 @@ function applySettings() {
     else root.classList.remove('theme-light');
     if (s.contrast === 'high') root.classList.add('contrast-high');
     else root.classList.remove('contrast-high');
+}
+
+// ===== NOTIFICATIONS PUSH (Web Push / VAPID) =====
+let _pushConfig = null;   // { enabled, publicKey }
+let _swReg = null;
+
+function notifCategoriesFromSettings() {
+    const s = loadSettings();
+    return {
+        group: !!s.notifGroup, codex: !!s.notifCodex, projects: !!s.notifProjects,
+        reco: !!s.notifReco, replies: !!s.notifReplies, tasks: !!s.notifTasks, usage: !!s.notifUsage,
+    };
+}
+function anyNotifOn() {
+    return Object.values(notifCategoriesFromSettings()).some(Boolean);
+}
+
+async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return null;
+    if (_swReg) return _swReg;
+    try { _swReg = await navigator.serviceWorker.register('/sw.js'); return _swReg; }
+    catch (e) { console.warn('Service worker non enregistré :', e); return null; }
+}
+
+async function getPushConfig() {
+    if (_pushConfig) return _pushConfig;
+    try { const r = await fetch(`${API_BASE}/push/config`); _pushConfig = await r.json(); }
+    catch { _pushConfig = { enabled: false, publicKey: '' }; }
+    return _pushConfig;
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+}
+
+// Abonne le navigateur au push serveur (nécessite VAPID configuré côté serveur).
+async function subscribePush() {
+    const cfg = await getPushConfig();
+    if (!cfg.enabled || !cfg.publicKey) return null; // serveur non configuré → pas de push serveur
+    const reg = await registerServiceWorker();
+    if (!reg) return null;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+        sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(cfg.publicKey),
+        });
+    }
+    await fetch(`${API_BASE}/push/subscribe`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ subscription: sub, categories: notifCategoriesFromSettings() }),
+    });
+    return sub;
+}
+
+async function syncNotifCategories() {
+    try {
+        await fetch(`${API_BASE}/push/categories`, {
+            method: 'PUT', headers: authHeaders(),
+            body: JSON.stringify({ categories: notifCategoriesFromSettings() }),
+        });
+    } catch { /* silencieux */ }
+}
+
+// Bascule d'un toggle de notification : demande la permission puis (dés)abonne.
+window.onNotifToggle = async function() {
+    saveSettings();
+    const descEl = document.getElementById('notif-perm-desc');
+    if (anyNotifOn()) {
+        if (!('Notification' in window)) {
+            showToast("Ton navigateur ne supporte pas les notifications.", 'error', 4000);
+            return;
+        }
+        let perm = Notification.permission;
+        if (perm === 'default') perm = await Notification.requestPermission();
+        if (perm === 'denied') {
+            showToast("Notifications bloquées par le navigateur.", 'error', 5000);
+            if (descEl) descEl.textContent = "Notifications bloquées par le navigateur — autorise-les dans les réglages du site pour les activer.";
+            return;
+        }
+        await registerServiceWorker();
+        await subscribePush();       // no-op propre si push serveur non configuré
+        await syncNotifCategories();
+        if (descEl) descEl.textContent = "Notifications activées. Clique sur « Tester » pour en recevoir une.";
+    } else {
+        await syncNotifCategories(); // toutes les catégories désactivées
+        if (descEl) descEl.textContent = "Tout est désactivé. Active une catégorie pour recevoir des notifications push.";
+    }
+};
+
+// Bouton « Tester » : affiche une vraie notification (serveur si configuré, sinon locale).
+window.testPush = async function() {
+    if (!('Notification' in window)) { showToast("Notifications non supportées par ce navigateur.", 'error', 3500); return; }
+    let perm = Notification.permission;
+    if (perm === 'default') perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showToast("Autorise d'abord les notifications.", 'error', 4000); return; }
+    const reg = await registerServiceWorker();
+    const cfg = await getPushConfig();
+    if (cfg.enabled) {
+        try {
+            const sub = await subscribePush();
+            if (sub) {
+                const r = await fetch(`${API_BASE}/push/test`, { method: 'POST', headers: authHeaders() });
+                if (r.ok) { showToast('Notification push envoyée ✓', 'success', 2500); return; }
+            }
+        } catch { /* on tombe sur le repli local */ }
+    }
+    // Repli : notification locale (fonctionne même sans serveur push configuré).
+    if (reg) {
+        reg.showNotification('Nexus AI', { body: 'Les notifications sont activées ✓', tag: 'nexus-test' });
+    } else {
+        new Notification('Nexus AI', { body: 'Les notifications sont activées ✓' });
+    }
+    showToast('Notification affichée ✓', 'success', 2500);
+};
+
+// À la connexion : ré-abonne si des catégories sont actives et la permission accordée.
+async function refreshPushOnLoad() {
+    try {
+        await registerServiceWorker();
+        if (anyNotifOn() && ('Notification' in window) && Notification.permission === 'granted') {
+            await subscribePush();
+        }
+    } catch { /* silencieux */ }
 }
 
 function updateSliderLabel() {

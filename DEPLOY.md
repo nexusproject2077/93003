@@ -168,7 +168,40 @@ Puis **décommente** la ligne Stripe dans `backend/cloudbuild.yaml`
 > proprement : le quota gratuit reste appliqué et le bouton « S'abonner »
 > affiche « indisponible ».
 
-## 6. Résultat
+## 6. Notifications push (Web Push / VAPID) — optionnel
+
+Le front embarque un Service Worker (`frontend/sw.js`) et s'abonne au push via
+`PushManager`. Le serveur envoie les notifications avec la librairie `web-push`
+et une paire de clés **VAPID**. Tout est **désactivé par défaut** côté
+utilisateur ; sans clés VAPID, le push serveur est simplement inactif (les
+notifications locales de test fonctionnent quand même).
+
+### a. Générer les clés VAPID
+```bash
+npx web-push generate-vapid-keys
+# → Public Key: B... / Private Key: ...
+```
+
+### b. Créer les secrets + les brancher sur Cloud Run
+```bash
+echo -n "CLE_PUBLIQUE"  | gcloud secrets create VAPID_PUBLIC_KEY  --data-file=-
+echo -n "CLE_PRIVEE"    | gcloud secrets create VAPID_PRIVATE_KEY --data-file=-
+
+PROJECT_NUMBER=$(gcloud projects describe MON_PROJECT_ID --format='value(projectNumber)')
+for S in VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY; do
+  gcloud secrets add-iam-policy-binding $S \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+Puis **ajoute** les clés dans le `--set-secrets` de `backend/cloudbuild.yaml`
+(`,VAPID_PUBLIC_KEY=VAPID_PUBLIC_KEY:latest,VAPID_PRIVATE_KEY=VAPID_PRIVATE_KEY:latest`)
+et, si tu veux, `VAPID_SUBJECT` en `--set-env-vars`. Redéploie le backend.
+
+> Le Service Worker et le push exigent **HTTPS** : ça marche sur
+> `https://…web.app`, pas en `http://` (sauf `localhost`).
+
+## 7. Résultat
 
 - Frontend : **https://nexus-ai.web.app**
 - Backend  : URL Cloud Run (référencée dans `frontend/js/config.js`)
