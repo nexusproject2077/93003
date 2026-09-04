@@ -5,10 +5,61 @@ const MODELS = NEXUS_CFG.MODELS || [{ id: 'llama-3.3-70b-versatile', label: 'Lla
 const TYPING_SPEED = 15;
 const TAVILY_KEY = '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';
 
-// ===== ÉTAT MODÈLE (sélecteur Groq) =====
+// ===== ÉTAT MODÈLE (sélecteur) =====
 let currentModel = localStorage.getItem('nexus_model') || NEXUS_CFG.DEFAULT_MODEL || MODELS[0].id;
+// Si un modèle périmé traîne dans le localStorage, on retombe sur le défaut.
+if (!MODELS.some(m => m.id === currentModel)) {
+    currentModel = NEXUS_CFG.DEFAULT_MODEL || MODELS[0].id;
+    try { localStorage.setItem('nexus_model', currentModel); } catch {}
+}
 function currentModelLabel() {
     return (MODELS.find(m => m.id === currentModel) || MODELS[0]).label;
+}
+
+// ===== FOURNISSEUR D'INFÉRENCE (badge dynamique) =====
+// Groq ne fait PAS tourner Gemini : le badge suit le modèle sélectionné.
+const PROVIDER_BADGES = {
+    groq: {
+        text: 'Propulsé par Groq',
+        title: 'Inférence Groq (LPU) — réponses instantanées',
+        cls: 'provider-groq',
+        icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+    },
+    gemini: {
+        text: 'Propulsé par Gemini API',
+        title: 'Google Gemini API — multimodal (vision + gros documents)',
+        cls: 'provider-gemini',
+        icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.4 4.6 3.4 7.6 8 8-4.6.4-7.6 3.4-8 8-.4-4.6-3.4-7.6-8-8 4.6-.4 7.6-3.4 8-8z"/></svg>',
+    },
+};
+function currentModelProvider() {
+    const m = MODELS.find(m => m.id === currentModel);
+    if (m && m.provider) return m.provider;
+    return String(currentModel).startsWith('gemini') ? 'gemini' : 'groq';
+}
+function currentProviderBadge() {
+    return PROVIDER_BADGES[currentModelProvider()] || PROVIDER_BADGES.groq;
+}
+function updatePoweredBadge() {
+    const b = currentProviderBadge();
+    // Badge de la barre d'outils (haut)
+    const badge = document.getElementById('powered-tag');
+    if (badge) {
+        const iconEl = document.getElementById('powered-icon');
+        const textEl = document.getElementById('powered-text');
+        if (iconEl) iconEl.innerHTML = b.icon;
+        if (textEl) textEl.textContent = b.text;
+        badge.title = b.title;
+        badge.classList.remove('provider-groq', 'provider-gemini');
+        badge.classList.add(b.cls);
+    }
+    // Bannière de l'écran d'accueil (centre)
+    const banner = document.getElementById('provider-banner');
+    if (banner) {
+        banner.classList.remove('provider-groq', 'provider-gemini');
+        banner.classList.add(b.cls);
+        banner.innerHTML = `${b.icon.replace('width="12" height="12"', 'width="16" height="16"')} ${b.text} — <strong>${currentModelProvider() === 'gemini' ? 'Multimodal & vision' : 'Réponses instantanées'}</strong>`;
+    }
 }
 
 // ===== AUTH =====
@@ -780,6 +831,14 @@ function generateRandomCode() {
     do { l3 = generateRandomLetter(); } while (l3 === l1 || l3 === l2);
     return `${l1}${Math.floor(Math.random()*10)}${l2}${l3}`;
 }
+// Code Reims (ex : DS7U) : Lettre, Lettre, Chiffre, Lettre — distinct du code Tcat.
+function generateReimsCode() {
+    const l1 = generateRandomLetter();
+    let l2, l4;
+    do { l2 = generateRandomLetter(); } while (l2 === l1);
+    do { l4 = generateRandomLetter(); } while (l4 === l1 || l4 === l2);
+    return `${l1}${l2}${Math.floor(Math.random()*10)}${l4}`;
+}
 
 // ===== SYSTEM PROMPT BUILDER =====
 function buildSystemPrompt() {
@@ -927,6 +986,24 @@ async function getGroqAIResponse(message, searchContext = null) {
 
         conv.history.push({ role: 'user', content: fullMessage || 'Analyse ces fichiers' });
 
+        // Vision native : on envoie l'image réelle (compressée) au modèle, en plus
+        // de la description texte. Non stocké dans l'historique (trop lourd) — juste
+        // pour cette requête. Exploité par les modèles Gemini (multimodal).
+        let imagePayload = [];
+        try {
+            const imgs = attachedFiles.filter(f => f.kind === 'image' && f.preview);
+            for (const f of imgs.slice(0, 4)) {
+                const compressed = await compressImage(f.preview, 1024, 0.8); // dataURL JPEG
+                const comma = compressed.indexOf(',');
+                if (comma > -1) imagePayload.push({ mimeType: 'image/jpeg', data: compressed.slice(comma + 1) });
+            }
+        } catch {}
+
+        // La vision d'image ne marche que sur Gemini — on prévient si besoin.
+        if (imagePayload.length && !String(currentModel).startsWith('gemini')) {
+            showToast('Astuce : passe sur un modèle Gemini pour que l\'IA voie vraiment l\'image.', '', 4000);
+        }
+
         currentFetch = new AbortController();
         const _t0 = performance.now();
         const response = await fetch(`${API_BASE}/chat`, {
@@ -935,6 +1012,7 @@ async function getGroqAIResponse(message, searchContext = null) {
             signal: currentFetch.signal,
             body: JSON.stringify({
                 model: currentModel,
+                images: imagePayload,
                 messages: [
                     { role: 'system', content: buildSystemPrompt() },
                     ...conv.history
@@ -945,6 +1023,11 @@ async function getGroqAIResponse(message, searchContext = null) {
         currentFetch = null;
         if (!response.ok) {
             if (response.status === 401) { handleLogout(); return ''; }
+            if (response.status === 402) {
+                let d = {}; try { d = await response.json(); } catch {}
+                openPaywall(d);
+                return '';
+            }
             let msg = 'Erreur de connexion à Nexus AI. Réessaie dans quelques secondes.';
             try { const e = await response.json(); if (e && e.error) msg = e.error; } catch {}
             return msg;
@@ -998,6 +1081,20 @@ async function handleMessage() {
         // Numéro de l'utilisateur connecté (chiffres uniquement), sinon numéro par défaut
         const ticketPhone = ((getUser() || {}).phone || '').replace(/\D/g, '') || '0783643942';
         const ticket = `Titre 1 voyage\n\nA présenter au conducteur à la montée\nLe ${formatDate(now)}\nDe ${formatTime(now)} a ${formatTime(oneHourLater)}\n\n1.35 E\n\n${generateRandomSequence()}\n\n${ticketPhone}${generateRandomCode()}\n\nCGV : www.tcat.fr/cgv-ticket-sms`;
+        setTimeout(async () => {
+            await addMessage('bot-message', ticket, false, true);
+            sendButton.disabled = false;
+            userInput.disabled  = false;
+            userInput.focus();
+            toggleStopButton(false);
+        }, 500);
+        navigator.clipboard.writeText(ticket).catch(console.error);
+    } else if (message === '1h15' && attachedFiles.length === 0) {
+        // Easter egg Grand Reims Mobilités — valable 1h15 (75 min), 1.80€
+        const now = new Date();
+        const endLater = new Date(now.getTime() + 75 * 60 * 1000);
+        const ticketPhone = ((getUser() || {}).phone || '').replace(/\D/g, '') || '0760438076';
+        const ticket = `GRAND REIMS MOBILITES\nTitre 1 voyage\nValable 1h15 de ${formatTime(now)} à ${formatTime(endLater)}\nle ${formatDate(now)}\n1.80€ TTC\n\n\n${generateRandomSequence()}\n\n\n${ticketPhone}${generateReimsCode()}\n\n\nwww.grandreims-mobilites.fr`;
         setTimeout(async () => {
             await addMessage('bot-message', ticket, false, true);
             sendButton.disabled = false;
@@ -1072,9 +1169,11 @@ let _userMemory = [];
 
 const defaultSettings = {
     theme: 'system', contrast: 'system', accent: '#00d2ff', langue: 'auto',
-    typingSpeed: 15, flashMode: false, vocalMode: false, notifGroup: 'push', notifCodex: 'push',
-    notifProjects: 'email', notifReco: 'both', notifReplies: 'push', notifTasks: 'both',
-    notifUsage: 'both', style: 'default', warm: 'default', enthusiastic: 'default',
+    typingSpeed: 15, flashMode: false, vocalMode: false,
+    // Notifications push : TOUT désactivé par défaut (l'utilisateur choisit).
+    notifGroup: false, notifCodex: false, notifProjects: false, notifReco: false,
+    notifReplies: false, notifTasks: false, notifUsage: false,
+    style: 'default', warm: 'default', enthusiastic: 'default',
     lists: 'default', emojis: 'default', quickReplies: true, instructions: '',
     alias: '', profession: '', about: '', memory: false, modelImprove: true,
     twoFA: false, contentFilter: false, safeMode: false, enterSend: true,
@@ -1106,6 +1205,7 @@ async function loadSettingsFromServer() {
         else document.documentElement.classList.remove('theme-light');
         if (s.contrast === 'high') document.documentElement.classList.add('contrast-high');
         else document.documentElement.classList.remove('contrast-high');
+        refreshPushOnLoad();
     } catch (err) {
         console.error('Erreur chargement settings:', err);
     }
@@ -1154,6 +1254,7 @@ async function extractAndSaveMemory(userMessage, aiResponse) {
             method: 'POST',
             headers: authHeaders(),
             body: JSON.stringify({
+                internal: true,
                 messages: [
                     {
                         role: 'system',
@@ -1251,13 +1352,13 @@ function readSettingsFromDOM() {
         typingSpeed:   parseInt(g('s-typing-speed')?.value ?? defaultSettings.typingSpeed),
         flashMode:     g('s-flash-mode')?.checked ?? defaultSettings.flashMode,
         vocalMode:     g('s-vocal-mode')?.checked ?? defaultSettings.vocalMode,
-        notifGroup:    g('s-notif-group')?.value || defaultSettings.notifGroup,
-        notifCodex:    g('s-notif-codex')?.value || defaultSettings.notifCodex,
-        notifProjects: g('s-notif-projects')?.value || defaultSettings.notifProjects,
-        notifReco:     g('s-notif-reco')?.value || defaultSettings.notifReco,
-        notifReplies:  g('s-notif-replies')?.value || defaultSettings.notifReplies,
-        notifTasks:    g('s-notif-tasks')?.value || defaultSettings.notifTasks,
-        notifUsage:    g('s-notif-usage')?.value || defaultSettings.notifUsage,
+        notifGroup:    g('s-notif-group')?.checked ?? defaultSettings.notifGroup,
+        notifCodex:    g('s-notif-codex')?.checked ?? defaultSettings.notifCodex,
+        notifProjects: g('s-notif-projects')?.checked ?? defaultSettings.notifProjects,
+        notifReco:     g('s-notif-reco')?.checked ?? defaultSettings.notifReco,
+        notifReplies:  g('s-notif-replies')?.checked ?? defaultSettings.notifReplies,
+        notifTasks:    g('s-notif-tasks')?.checked ?? defaultSettings.notifTasks,
+        notifUsage:    g('s-notif-usage')?.checked ?? defaultSettings.notifUsage,
         style:         g('s-style')?.value || defaultSettings.style,
         warm:          g('s-warm')?.value || defaultSettings.warm,
         enthusiastic:  g('s-enthusiastic')?.value || defaultSettings.enthusiastic,
@@ -1289,10 +1390,11 @@ function populateSettingsDOM(s) {
     set('s-langue', s.langue); set('s-typing-speed', s.typingSpeed);
     check('s-flash-mode', s.flashMode);
     check('s-vocal-mode', s.vocalMode);
-    set('s-notif-group', s.notifGroup); set('s-notif-codex', s.notifCodex);
-    set('s-notif-projects', s.notifProjects); set('s-notif-reco', s.notifReco);
-    set('s-notif-replies', s.notifReplies); set('s-notif-tasks', s.notifTasks);
-    set('s-notif-usage', s.notifUsage); set('s-style', s.style);
+    check('s-notif-group', s.notifGroup); check('s-notif-codex', s.notifCodex);
+    check('s-notif-projects', s.notifProjects); check('s-notif-reco', s.notifReco);
+    check('s-notif-replies', s.notifReplies); check('s-notif-tasks', s.notifTasks);
+    check('s-notif-usage', s.notifUsage);
+    set('s-style', s.style);
     set('s-warm', s.warm); set('s-enthusiastic', s.enthusiastic);
     set('s-lists', s.lists); set('s-emojis', s.emojis);
     check('s-quick-replies', s.quickReplies);
@@ -1325,6 +1427,135 @@ function applySettings() {
     else root.classList.remove('contrast-high');
 }
 
+// ===== NOTIFICATIONS PUSH (Web Push / VAPID) =====
+let _pushConfig = null;   // { enabled, publicKey }
+let _swReg = null;
+
+function notifCategoriesFromSettings() {
+    const s = loadSettings();
+    return {
+        group: !!s.notifGroup, codex: !!s.notifCodex, projects: !!s.notifProjects,
+        reco: !!s.notifReco, replies: !!s.notifReplies, tasks: !!s.notifTasks, usage: !!s.notifUsage,
+    };
+}
+function anyNotifOn() {
+    return Object.values(notifCategoriesFromSettings()).some(Boolean);
+}
+
+async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return null;
+    if (_swReg) return _swReg;
+    try { _swReg = await navigator.serviceWorker.register('/sw.js'); return _swReg; }
+    catch (e) { console.warn('Service worker non enregistré :', e); return null; }
+}
+
+async function getPushConfig() {
+    if (_pushConfig) return _pushConfig;
+    try { const r = await fetch(`${API_BASE}/push/config`); _pushConfig = await r.json(); }
+    catch { _pushConfig = { enabled: false, publicKey: '' }; }
+    return _pushConfig;
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+}
+
+// Abonne le navigateur au push serveur (nécessite VAPID configuré côté serveur).
+async function subscribePush() {
+    const cfg = await getPushConfig();
+    if (!cfg.enabled || !cfg.publicKey) return null; // serveur non configuré → pas de push serveur
+    const reg = await registerServiceWorker();
+    if (!reg) return null;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+        sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(cfg.publicKey),
+        });
+    }
+    await fetch(`${API_BASE}/push/subscribe`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ subscription: sub, categories: notifCategoriesFromSettings() }),
+    });
+    return sub;
+}
+
+async function syncNotifCategories() {
+    try {
+        await fetch(`${API_BASE}/push/categories`, {
+            method: 'PUT', headers: authHeaders(),
+            body: JSON.stringify({ categories: notifCategoriesFromSettings() }),
+        });
+    } catch { /* silencieux */ }
+}
+
+// Bascule d'un toggle de notification : demande la permission puis (dés)abonne.
+window.onNotifToggle = async function() {
+    saveSettings();
+    const descEl = document.getElementById('notif-perm-desc');
+    if (anyNotifOn()) {
+        if (!('Notification' in window)) {
+            showToast("Ton navigateur ne supporte pas les notifications.", 'error', 4000);
+            return;
+        }
+        let perm = Notification.permission;
+        if (perm === 'default') perm = await Notification.requestPermission();
+        if (perm === 'denied') {
+            showToast("Notifications bloquées par le navigateur.", 'error', 5000);
+            if (descEl) descEl.textContent = "Notifications bloquées par le navigateur — autorise-les dans les réglages du site pour les activer.";
+            return;
+        }
+        await registerServiceWorker();
+        await subscribePush();       // no-op propre si push serveur non configuré
+        await syncNotifCategories();
+        if (descEl) descEl.textContent = "Notifications activées. Clique sur « Tester » pour en recevoir une.";
+    } else {
+        await syncNotifCategories(); // toutes les catégories désactivées
+        if (descEl) descEl.textContent = "Tout est désactivé. Active une catégorie pour recevoir des notifications push.";
+    }
+};
+
+// Bouton « Tester » : affiche une vraie notification (serveur si configuré, sinon locale).
+window.testPush = async function() {
+    if (!('Notification' in window)) { showToast("Notifications non supportées par ce navigateur.", 'error', 3500); return; }
+    let perm = Notification.permission;
+    if (perm === 'default') perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showToast("Autorise d'abord les notifications.", 'error', 4000); return; }
+    const reg = await registerServiceWorker();
+    const cfg = await getPushConfig();
+    if (cfg.enabled) {
+        try {
+            const sub = await subscribePush();
+            if (sub) {
+                const r = await fetch(`${API_BASE}/push/test`, { method: 'POST', headers: authHeaders() });
+                if (r.ok) { showToast('Notification push envoyée ✓', 'success', 2500); return; }
+            }
+        } catch { /* on tombe sur le repli local */ }
+    }
+    // Repli : notification locale (fonctionne même sans serveur push configuré).
+    if (reg) {
+        reg.showNotification('Nexus AI', { body: 'Les notifications sont activées ✓', tag: 'nexus-test' });
+    } else {
+        new Notification('Nexus AI', { body: 'Les notifications sont activées ✓' });
+    }
+    showToast('Notification affichée ✓', 'success', 2500);
+};
+
+// À la connexion : ré-abonne si des catégories sont actives et la permission accordée.
+async function refreshPushOnLoad() {
+    try {
+        await registerServiceWorker();
+        if (anyNotifOn() && ('Notification' in window) && Notification.permission === 'granted') {
+            await subscribePush();
+        }
+    } catch { /* silencieux */ }
+}
+
 function updateSliderLabel() {
     const slider = id('s-typing-speed');
     const label  = id('typing-speed-label');
@@ -1354,6 +1585,7 @@ window.openSettings = function() {
         const pEl = id('s-phone');
         if (pEl) pEl.value = user.phone || '';
     }
+    refreshBillingStatus();
 };
 
 window.closeSettings = function() {
@@ -1478,6 +1710,7 @@ function initModelSelector() {
     const menu = document.getElementById('model-menu');
     const nameEl = document.getElementById('current-model-name');
     if (nameEl) nameEl.textContent = currentModelLabel();
+    updatePoweredBadge();
     if (!menu) return;
     menu.innerHTML = MODELS.map(m => `
         <button class="model-option${m.id === currentModel ? ' active' : ''}" data-model="${m.id}" onclick="selectModel('${m.id}')">
@@ -1501,6 +1734,7 @@ window.selectModel = function(id) {
     localStorage.setItem('nexus_model', id);
     const nameEl = document.getElementById('current-model-name');
     if (nameEl) nameEl.textContent = currentModelLabel();
+    updatePoweredBadge();
     initModelSelector();
     closeModelMenu();
     showToast('Modèle : ' + currentModelLabel(), 'success', 1600);
@@ -1561,13 +1795,11 @@ function renderEmptyState() {
     chatBox.innerHTML = `
         <div class="empty-state" id="empty-state">
             <div class="empty-logo"><span class="nexus-logo">NEXUS</span> <span class="ai-label">AI</span></div>
-            <div class="groq-banner">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                Propulsé par Groq — <strong>Réponses instantanées</strong>
-            </div>
+            <div class="groq-banner" id="provider-banner"></div>
             <p class="empty-subtitle">Par où veux-tu commencer ?</p>
             <div class="suggestion-grid">${cards}</div>
         </div>`;
+    updatePoweredBadge();
 }
 
 function removeEmptyState() {
@@ -1741,6 +1973,79 @@ window.savePhoneFromSettings = async function() {
         if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
     }
 };
+
+// ===== ABONNEMENT / QUOTA (Nexus Pro) =====
+function openPaywall(data = {}) {
+    const overlay = document.getElementById('paywall-overlay');
+    if (!overlay) return;
+    const limitEl = document.getElementById('paywall-limit');
+    if (limitEl && data.limit) limitEl.textContent = data.limit;
+    overlay.classList.remove('hidden');
+}
+
+window.closePaywall = function() {
+    const overlay = document.getElementById('paywall-overlay');
+    if (overlay) overlay.classList.add('hidden');
+};
+
+window.subscribeNow = async function() {
+    const btn = document.getElementById('paywall-subscribe');
+    if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Redirection…'; }
+    try {
+        const res = await fetch(`${API_BASE}/billing/checkout`, { method: 'POST', headers: authHeaders() });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) {
+            showToast(data.error || 'Abonnement indisponible pour le moment.', 'error', 4000);
+            return;
+        }
+        window.location.href = data.url; // redirection vers Stripe Checkout
+    } catch {
+        showToast('Impossible de contacter le service de paiement.', 'error', 4000);
+    } finally {
+        if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'S\'abonner — 18€/mois'; }
+    }
+};
+
+// Récupère plan + quota et met à jour le user local + l'écran Facturation
+async function refreshBillingStatus() {
+    try {
+        const res = await fetch(`${API_BASE}/billing/status`, { headers: authHeaders() });
+        if (!res.ok) return null;
+        const s = await res.json();
+        const user = getUser();
+        if (user) { user.plan = s.plan; localStorage.setItem('nexus_user', JSON.stringify(user)); }
+        // Écran Paramètres › Facturation
+        const planEl = document.getElementById('billing-plan');
+        const usageEl = document.getElementById('billing-usage');
+        const btn = document.getElementById('billing-action');
+        if (planEl) planEl.textContent = s.plan === 'pro' ? 'Nexus Pro (18€/mois)' : 'Gratuit';
+        if (usageEl) usageEl.textContent = s.plan === 'pro'
+            ? `${s.usage} messages aujourd'hui`
+            : `${s.usage}/${s.limit} messages utilisés aujourd'hui`;
+        if (btn) {
+            if (s.plan === 'pro') { btn.textContent = 'Abonnement actif'; btn.disabled = true; }
+            else { btn.textContent = 'Passer à Pro'; btn.disabled = false; btn.onclick = subscribeNow; }
+        }
+        return s;
+    } catch { return null; }
+}
+
+// Retour depuis Stripe Checkout (?checkout=success|cancel)
+(function handleCheckoutReturn() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const c = params.get('checkout');
+        if (!c) return;
+        // Nettoie l'URL
+        window.history.replaceState({}, '', window.location.pathname);
+        if (c === 'success') {
+            setTimeout(() => showToast('Bienvenue chez Nexus Pro ! Abonnement activé. 🎉', 'success', 4000), 600);
+            setTimeout(refreshBillingStatus, 1500); // le temps que le webhook passe
+        } else if (c === 'cancel') {
+            setTimeout(() => showToast('Abonnement annulé.', '', 3000), 400);
+        }
+    } catch {}
+})();
 
 // ===== LIQUID GLASS HEADER SCROLL EFFECT =====
 (function() {

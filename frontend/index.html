@@ -182,16 +182,16 @@
             <!-- Barre d'outils : sélecteur de modèle rapproché du chat -->
             <div class="chat-toolbar" id="chat-toolbar">
                 <div class="model-selector" id="model-selector">
-                    <button class="model-selector-btn" id="model-selector-btn" onclick="toggleModelMenu(event)" title="Choisir le modèle Groq">
+                    <button class="model-selector-btn" id="model-selector-btn" onclick="toggleModelMenu(event)" title="Choisir le modèle">
                         <span class="status-dot"></span>
                         <span class="model-name" id="current-model-name">Llama 3.3 · 70B</span>
                         <svg class="model-chevron" width="12" height="12" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                     <div class="model-menu hidden" id="model-menu"></div>
                 </div>
-                <div class="powered-tag" title="Inférence Groq — réponses instantanées">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                    Propulsé par Groq
+                <div class="powered-tag provider-groq" id="powered-tag" title="Inférence Groq — réponses instantanées">
+                    <span class="powered-icon" id="powered-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg></span>
+                    <span id="powered-text">Propulsé par Groq</span>
                 </div>
             </div>
 
@@ -232,7 +232,7 @@
             </div>
 
             <div class="footer">
-                <span class="nexus-brand">NEXUS</span> · IA Avancée · Propulsé par Groq
+                <span class="nexus-brand">NEXUS</span> · IA Avancée · Multi-modèles (Groq &amp; Gemini)
             </div>
         </div>
 
@@ -387,17 +387,27 @@
                     <h2 class="settings-title">Notifications</h2>
                     <div class="settings-divider"></div>
 
+                    <div class="notif-head">
+                        <div>
+                            <span class="settings-label">Notifications push</span>
+                            <p class="settings-desc" id="notif-perm-desc">Tout est désactivé par défaut. Active les catégories souhaitées : ton navigateur te demandera l'autorisation d'envoyer des notifications.</p>
+                        </div>
+                        <button type="button" class="notif-test-btn" id="notif-test-btn" onclick="testPush()">Tester</button>
+                    </div>
+                    <div class="settings-divider-thin"></div>
+
                     <div class="settings-row">
                         <div>
                             <span class="settings-label">Chats de groupe</span>
                             <p class="settings-desc">Vous recevrez des notifications pour les nouveaux messages dans les chats de groupe.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-group" onchange="saveSettings()">
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-group" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -406,12 +416,13 @@
                             <span class="settings-label">Codex</span>
                             <p class="settings-desc">Recevez des notifications sur les tâches Codex.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-codex" onchange="saveSettings()">
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-codex" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -420,12 +431,13 @@
                             <span class="settings-label">Projets</span>
                             <p class="settings-desc">Vous recevrez une notification à la réception d'une invitation par e-mail à rejoindre un projet partagé.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-projects" onchange="saveSettings()">
-                            <option value="email">E-mail</option>
-                            <option value="push">Push</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-projects" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -434,12 +446,13 @@
                             <span class="settings-label">Recommandations</span>
                             <p class="settings-desc">Vous recevrez des notifications sur les dernières nouveautés de Nexus AI (outils, fonctionnalités, conseils).</p>
                         </div>
-                        <select class="settings-select" id="s-notif-reco" onchange="saveSettings()">
-                            <option value="both">Push, e-mail</option>
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-reco" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -448,12 +461,13 @@
                             <span class="settings-label">Réponses</span>
                             <p class="settings-desc">Vous recevrez une notification lorsque Nexus AI répondra à des demandes qui prennent du temps, comme les recherches ou la génération d'images.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-replies" onchange="saveSettings()">
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="both">Push, e-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-replies" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -462,12 +476,13 @@
                             <span class="settings-label">Tâches</span>
                             <p class="settings-desc">Recevez des notifications lorsque les tâches que vous avez créées sont mises à jour.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-tasks" onchange="saveSettings()">
-                            <option value="both">Push, e-mail</option>
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-tasks" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="settings-divider-thin"></div>
 
@@ -476,12 +491,13 @@
                             <span class="settings-label">Utilisation</span>
                             <p class="settings-desc">Vous recevrez des notifications lorsque vos limites relatives aux fonctionnalités telles que la création d'images seront réinitialisées.</p>
                         </div>
-                        <select class="settings-select" id="s-notif-usage" onchange="saveSettings()">
-                            <option value="both">Push, e-mail</option>
-                            <option value="push">Push</option>
-                            <option value="email">E-mail</option>
-                            <option value="none">Désactivé</option>
-                        </select>
+                        <div class="notif-controls">
+                            <span class="notif-soon" title="Notifications par e-mail — bientôt disponibles">E-mail · À venir</span>
+                            <label class="settings-toggle" title="Notification push">
+                                <input type="checkbox" id="s-notif-usage" onchange="onNotifToggle()">
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -663,27 +679,31 @@
                     <div class="settings-row">
                         <div>
                             <span class="settings-label">Plan actuel</span>
-                            <p class="settings-desc">Nexus AI Gratuit</p>
+                            <p class="settings-desc" id="billing-plan">Gratuit</p>
                         </div>
-                        <button class="settings-action-btn">Mettre à niveau</button>
+                        <button class="settings-action-btn" id="billing-action" onclick="subscribeNow()">Passer à Pro</button>
                     </div>
                     <div class="settings-divider-thin"></div>
 
                     <div class="settings-row">
                         <div>
-                            <span class="settings-label">Moyen de paiement</span>
-                            <p class="settings-desc">Aucun moyen de paiement enregistré.</p>
+                            <span class="settings-label">Utilisation du jour</span>
+                            <p class="settings-desc" id="billing-usage">—</p>
                         </div>
-                        <button class="settings-action-btn">Ajouter</button>
                     </div>
                     <div class="settings-divider-thin"></div>
 
-                    <div class="settings-row">
-                        <div>
-                            <span class="settings-label">Historique de facturation</span>
-                            <p class="settings-desc">Consultez vos factures passées.</p>
+                    <div class="billing-pro-card">
+                        <div class="billing-pro-head">
+                            <span class="billing-pro-name">Nexus Pro</span>
+                            <span class="billing-pro-price">18€<span>/mois</span></span>
                         </div>
-                        <button class="settings-action-btn">Voir les factures</button>
+                        <ul class="billing-pro-features">
+                            <li>Messages illimités (fini la limite quotidienne)</li>
+                            <li>Tous les modèles Groq + Gemini</li>
+                            <li>Vision d'image incluse</li>
+                            <li>Résiliable à tout moment</li>
+                        </ul>
                     </div>
                 </div>
 
@@ -944,6 +964,28 @@
             <div class="phone-modal-actions">
                 <button class="phone-skip-btn" onclick="skipPhonePrompt()">Plus tard</button>
                 <button class="phone-save-btn" id="phone-save-btn" onclick="savePhoneFromPrompt()"><span>Enregistrer</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== PAYWALL — NEXUS PRO ===== -->
+    <div id="paywall-overlay" class="phone-overlay hidden">
+        <div class="phone-modal paywall-modal">
+            <div class="phone-modal-icon paywall-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            </div>
+            <h2 class="phone-modal-title">Passe à Nexus Pro</h2>
+            <p class="phone-modal-desc">Tu as atteint ta limite gratuite de <strong id="paywall-limit">20</strong> messages par jour. Abonne-toi pour continuer <strong>sans limite</strong>.</p>
+            <div class="paywall-price"><span class="paywall-amount">18€</span><span class="paywall-period">/mois</span></div>
+            <ul class="paywall-features">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Messages illimités</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Tous les modèles Groq + Gemini</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Vision d'image incluse</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Résiliable à tout moment</li>
+            </ul>
+            <div class="phone-modal-actions">
+                <button class="phone-skip-btn" onclick="closePaywall()">Plus tard</button>
+                <button class="phone-save-btn" id="paywall-subscribe" onclick="subscribeNow()"><span>S'abonner — 18€/mois</span></button>
             </div>
         </div>
     </div>

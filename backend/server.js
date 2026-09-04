@@ -23,7 +23,8 @@ import { getStore, randomUUID } from './store.js';
 
 const app = express();
 app.use(cors());                       // allow the Firebase-hosted frontend
-app.use(express.json({ limit: '12mb' })); // messages can carry file text
+// NOTE: express.json() is installed AFTER the Stripe webhook route below,
+// because Stripe signature verification needs the raw request body.
 
 const PORT        = process.env.PORT || 8080;
 const JWT_SECRET  = process.env.JWT_SECRET || 'change-me-in-production';
@@ -32,17 +33,15 @@ const GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 // Google AI Studio exposes an OpenAI-compatible endpoint — same request shape.
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-const DEFAULT_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const DEFAULT_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
 // Allow-listed models → which provider serves them (safety + routing).
 const MODEL_PROVIDER = {
-  'llama-3.3-70b-versatile': 'groq',
-  'llama-3.1-8b-instant':    'groq',
-  'llama3-70b-8192':         'groq',
-  'mixtral-8x7b-32768':      'groq',
-  'gemma2-9b-it':            'groq',
-  'gemini-2.5-flash':        'gemini',
-  'gemini-2.5-flash-lite':   'gemini',
+  'openai/gpt-oss-120b':      'groq',
+  'openai/gpt-oss-20b':       'groq',
+  'qwen/qwen3.6-27b':         'groq',
+  'gemini-flash-latest':      'gemini',
+  'gemini-flash-lite-latest': 'gemini',
 };
 
 const PROVIDERS = {
@@ -50,8 +49,127 @@ const PROVIDERS = {
   gemini: { url: GEMINI_URL, key: () => GEMINI_API_KEY, label: 'GEMINI_API_KEY' },
 };
 
+// ---- Quotas & billing ----
+const FREE_DAILY_LIMIT = parseInt(process.env.FREE_DAILY_LIMIT || '20', 10); // free messages / day
+const PRO_DAILY_LIMIT  = parseInt(process.env.PRO_DAILY_LIMIT  || '500', 10); // safety cap for Pro
+const APP_URL = (process.env.APP_URL || 'https://nexus-ai-608af.web.app').replace(/\/$/, '');
+const STRIPE_SECRET_KEY     = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_PRICE_ID       = process.env.STRIPE_PRICE_ID || '';       // recurring 18€/month price
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+
+function todayKey() { return new Date().toISOString().slice(0, 10); } // YYYY-MM-DD
+function dailyLimitFor(user) { return user.plan === 'pro' ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT; }
+
+// ---- Web Push (notifications push réelles, via VAPID) ----
+const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT     = process.env.VAPID_SUBJECT || 'mailto:contact@nexus-ai.app';
+// Catégories de notification connues (doivent matcher le front).
+const NOTIF_CATEGORIES = ['group', 'codex', 'projects', 'reco', 'replies', 'tasks', 'usage'];
+
 // Persistence backend (Firestore or in-memory) — see store.js.
 const store = await getStore();
+
+// ---------------------------------------------------------------
+//  STRIPE (lazy) — subscription checkout + webhook
+// ---------------------------------------------------------------
+let _stripe = null;
+async function getStripe() {
+  if (_stripe) return _stripe;
+  if (!STRIPE_SECRET_KEY) return null;
+  const Stripe = (await import('stripe')).default;
+  _stripe = new Stripe(STRIPE_SECRET_KEY);
+  return _stripe;
+}
+
+// ---------------------------------------------------------------
+//  WEB PUSH (lazy) — vraies notifications push via le protocole VAPID
+// ---------------------------------------------------------------
+let _webpush = null;
+async function getWebPush() {
+  if (_webpush) return _webpush;
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return null; // désactivé proprement
+  const webpush = (await import('web-push')).default;
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  _webpush = webpush;
+  return _webpush;
+}
+
+// Envoie une notification à tous les abonnements d'un utilisateur.
+// Élague automatiquement les abonnements expirés (404/410).
+async function sendPushToUser(user, payload) {
+  const webpush = await getWebPush();
+  if (!webpush || !user) return { sent: 0, disabled: !webpush };
+  const subs = Array.isArray(user.pushSubscriptions) ? user.pushSubscriptions : [];
+  if (subs.length === 0) return { sent: 0 };
+  const body = JSON.stringify(payload);
+  let sent = 0;
+  const alive = [];
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(sub, body);
+      sent++;
+      alive.push(sub);
+    } catch (err) {
+      // 404/410 = abonnement expiré → on le retire ; sinon on le garde.
+      if (err.statusCode !== 404 && err.statusCode !== 410) alive.push(sub);
+      else console.log('Push: abonnement expiré retiré');
+    }
+  }
+  if (alive.length !== subs.length) {
+    user.pushSubscriptions = alive;
+    await store.usersSave(user);
+  }
+  return { sent };
+}
+
+// Stripe webhook MUST read the raw body (for signature verification), so it is
+// registered BEFORE express.json(). It keeps a user's plan in sync with Stripe.
+app.post('/billing/webhook', express.raw({ type: '*/*' }), async (req, res) => {
+  const stripe = await getStripe();
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(503).send('billing disabled');
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Stripe signature error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    const setPlan = async (user, plan, extra = {}) => {
+      if (!user) return;
+      user.plan = plan;
+      Object.assign(user, extra);
+      await store.usersSave(user);
+    };
+
+    if (event.type === 'checkout.session.completed') {
+      const s = event.data.object;
+      const user = await store.usersGetById(s.client_reference_id);
+      await setPlan(user, 'pro', {
+        stripeCustomerId: s.customer || undefined,
+        stripeSubscriptionId: s.subscription || undefined,
+      });
+    } else if (event.type === 'customer.subscription.updated') {
+      const sub = event.data.object;
+      const user = await store.usersGetByStripeCustomer(sub.customer);
+      const active = sub.status === 'active' || sub.status === 'trialing';
+      await setPlan(user, active ? 'pro' : 'free');
+    } else if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      const user = await store.usersGetByStripeCustomer(sub.customer);
+      await setPlan(user, 'free');
+    }
+  } catch (err) {
+    console.error('Webhook handling error:', err);
+  }
+  res.json({ received: true });
+});
+
+// From here on, parse JSON bodies (messages can carry file text + images).
+app.use(express.json({ limit: '12mb' }));
 
 // Wrap async route handlers so a rejected promise (e.g. a Firestore
 // error) becomes a clean 500 instead of a hung request. Express 4 does
@@ -66,7 +184,7 @@ function signToken(user) {
 }
 
 function publicUser(user) {
-  return { id: user.id, username: user.username, email: user.email, phone: user.phone || '' };
+  return { id: user.id, username: user.username, email: user.email, phone: user.phone || '', plan: user.plan || 'free' };
 }
 
 // Light phone normalisation/validation: keep +, digits and spaces; 6-20 digits.
@@ -339,7 +457,7 @@ app.delete('/conversations/:id', auth, ah(async (req, res) => {
 // return an OpenAI-shaped payload, so the frontend needs no changes. We use
 // the native endpoint (not the OpenAI-compat one) because API keys pass as a
 // query param here, which works with every AI Studio key format.
-async function callGeminiNative(model, messages, key) {
+async function callGeminiNative(model, messages, key, images = []) {
   const systemText = messages
     .filter(m => m.role === 'system')
     .map(m => m.content).join('\n\n');
@@ -349,6 +467,16 @@ async function callGeminiNative(model, messages, key) {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: String(m.content ?? '') }],
     }));
+
+  // Attach real images to the latest user turn (native multimodal vision).
+  if (Array.isArray(images) && images.length && contents.length) {
+    const last = contents[contents.length - 1];
+    for (const img of images.slice(0, 4)) {
+      if (img && img.data) {
+        last.parts.push({ inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.data } });
+      }
+    }
+  }
 
   const body = { contents, generationConfig: { temperature: 0.7 } };
   if (systemText) body.systemInstruction = { parts: [{ text: systemText }] };
@@ -383,7 +511,7 @@ async function callGeminiNative(model, messages, key) {
 //  CHAT — multi-provider proxy (Groq via OpenAI-compat, Gemini native)
 // ---------------------------------------------------------------
 app.post('/chat', auth, ah(async (req, res) => {
-  const { messages, model } = req.body || {};
+  const { messages, model, images } = req.body || {};
   if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages requis.' });
 
   const chosenModel = MODEL_PROVIDER[model] ? model : DEFAULT_MODEL;
@@ -394,10 +522,34 @@ app.post('/chat', auth, ah(async (req, res) => {
     return res.status(500).json({ error: `${provider.label} non configurée sur le serveur.` });
   }
 
+  // ---- Daily quota (protects against runaway provider cost) ----
+  // Internal calls (background memory extraction) don't consume the visible
+  // message quota, but are still blocked once the cap is reached.
+  const isInternal = req.body && req.body.internal === true;
+  const limit = dailyLimitFor(req.user);
+  const day = todayKey();
+  let usage = req.user.usage || { day, count: 0 };
+  if (usage.day !== day) usage = { day, count: 0 };
+  if (usage.count >= limit) {
+    return res.status(402).json({
+      code: 'QUOTA_EXCEEDED',
+      error: req.user.plan === 'pro'
+        ? 'Limite quotidienne atteinte. Réessaie demain.'
+        : `Tu as atteint ta limite gratuite de ${limit} messages/jour. Passe à Nexus Pro pour continuer sans limite.`,
+      plan: req.user.plan || 'free',
+      limit,
+    });
+  }
+  if (!isInternal) {
+    usage.count += 1;
+    req.user.usage = usage;
+    await store.usersSave(req.user);
+  }
+
   try {
-    // ---- Gemini: native endpoint ----
+    // ---- Gemini: native endpoint (with multimodal image vision) ----
     if (providerName === 'gemini') {
-      const r = await callGeminiNative(chosenModel, messages, key);
+      const r = await callGeminiNative(chosenModel, messages, key, images);
       if (!r.ok) {
         console.error('Gemini error', chosenModel, r.status, r.error);
         const status = (r.status === 401 || r.status === 403) ? 502 : (r.status || 502);
@@ -480,6 +632,102 @@ app.delete('/user/memory/:index', auth, ah(async (req, res) => {
     await store.usersSave(req.user);
   }
   res.json({ ok: true, memory: req.user.memory });
+}));
+
+// ---------------------------------------------------------------
+//  BILLING — quota status + Stripe subscription checkout (18€/mo)
+// ---------------------------------------------------------------
+app.get('/billing/status', auth, ah((req, res) => {
+  const day = todayKey();
+  const usage = (req.user.usage && req.user.usage.day === day) ? req.user.usage.count : 0;
+  const limit = dailyLimitFor(req.user);
+  res.json({
+    plan: req.user.plan || 'free',
+    usage,
+    limit,
+    remaining: Math.max(0, limit - usage),
+    billingEnabled: Boolean(STRIPE_SECRET_KEY && STRIPE_PRICE_ID),
+    price: '18€/mois',
+  });
+}));
+
+// Create a Stripe Checkout session for the monthly subscription.
+app.post('/billing/checkout', auth, ah(async (req, res) => {
+  const stripe = await getStripe();
+  if (!stripe || !STRIPE_PRICE_ID) {
+    return res.status(503).json({ error: 'Abonnement non configuré sur le serveur.' });
+  }
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+    client_reference_id: req.user.id,
+    customer_email: req.user.email,
+    success_url: `${APP_URL}/?checkout=success`,
+    cancel_url: `${APP_URL}/?checkout=cancel`,
+    allow_promotion_codes: true,
+  });
+  res.json({ url: session.url });
+}));
+
+// ---------------------------------------------------------------
+//  NOTIFICATIONS PUSH (Web Push / VAPID)
+// ---------------------------------------------------------------
+// Clé publique VAPID + état d'activation (public : le front en a besoin
+// pour s'abonner). Renvoie enabled:false tant que les clés ne sont pas
+// configurées → le front dégrade proprement.
+app.get('/push/config', (_req, res) => {
+  res.json({ enabled: Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY), publicKey: VAPID_PUBLIC_KEY || '' });
+});
+
+// Enregistre l'abonnement push du navigateur + les catégories choisies.
+app.post('/push/subscribe', auth, ah(async (req, res) => {
+  const { subscription, categories } = req.body || {};
+  if (!subscription || !subscription.endpoint) {
+    return res.status(400).json({ error: 'Abonnement invalide.' });
+  }
+  const subs = Array.isArray(req.user.pushSubscriptions) ? req.user.pushSubscriptions : [];
+  // Dédoublonnage par endpoint.
+  const next = subs.filter(s => s.endpoint !== subscription.endpoint);
+  next.push(subscription);
+  req.user.pushSubscriptions = next;
+  if (categories && typeof categories === 'object') {
+    const clean = {};
+    for (const c of NOTIF_CATEGORIES) clean[c] = Boolean(categories[c]);
+    req.user.pushCategories = clean;
+  }
+  await store.usersSave(req.user);
+  res.json({ ok: true, count: next.length });
+}));
+
+// Met à jour uniquement les catégories (toggles) sans re-souscrire.
+app.put('/push/categories', auth, ah(async (req, res) => {
+  const { categories } = req.body || {};
+  const clean = {};
+  for (const c of NOTIF_CATEGORIES) clean[c] = Boolean(categories && categories[c]);
+  req.user.pushCategories = clean;
+  await store.usersSave(req.user);
+  res.json({ ok: true, categories: clean });
+}));
+
+// Retire un abonnement (déconnexion / navigateur désabonné).
+app.post('/push/unsubscribe', auth, ah(async (req, res) => {
+  const { endpoint } = req.body || {};
+  const subs = Array.isArray(req.user.pushSubscriptions) ? req.user.pushSubscriptions : [];
+  req.user.pushSubscriptions = endpoint ? subs.filter(s => s.endpoint !== endpoint) : [];
+  await store.usersSave(req.user);
+  res.json({ ok: true });
+}));
+
+// Envoie une notification de test réelle à l'utilisateur connecté.
+app.post('/push/test', auth, ah(async (req, res) => {
+  const result = await sendPushToUser(req.user, {
+    title: 'Nexus AI',
+    body: 'Les notifications push sont activées ✓',
+    tag: 'nexus-test',
+  });
+  if (result.disabled) return res.status(503).json({ error: 'Push non configuré sur le serveur.' });
+  if (result.sent === 0) return res.status(409).json({ error: 'Aucun appareil abonné.' });
+  res.json({ ok: true, sent: result.sent });
 }));
 
 // Central error handler — turns any thrown/rejected route error into a

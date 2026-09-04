@@ -35,6 +35,9 @@ function createMemoryStore() {
       usersByEmail.set(user.email, user);
       return user;
     },
+    async usersGetByStripeCustomer(customerId) {
+      return [...users.values()].find(u => u.stripeCustomerId === customerId) || null;
+    },
     async convsListByUser(userId) {
       return [...conversations.values()]
         .filter(c => c.userId === userId)
@@ -78,6 +81,10 @@ function createFirestoreStore(db) {
     async usersSave(user) {
       await usersCol.doc(user.id).set(stripUndefined(user), { merge: true });
       return user;
+    },
+    async usersGetByStripeCustomer(customerId) {
+      const snap = await usersCol.where('stripeCustomerId', '==', customerId).limit(1).get();
+      return snap.empty ? null : snap.docs[0].data();
     },
     async convsListByUser(userId) {
       const snap = await convsCol.where('userId', '==', userId).get();

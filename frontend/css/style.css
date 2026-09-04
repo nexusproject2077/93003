@@ -497,7 +497,12 @@ body {
     padding: 28px 24px 20px;
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    /* Hauteur verrouillée sur l'écran : seule la liste de messages défile,
+       la barre de saisie reste toujours visible en bas. */
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
     transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     z-index: 1;
@@ -678,7 +683,7 @@ h1 {
 #chat-box {
     width: 100%;
     max-width: 760px;
-    min-height: 380px;
+    min-height: 0;
     padding: 22px;
     overflow-y: auto;
     margin: 8px auto 14px;
@@ -964,6 +969,13 @@ h1 {
     box-shadow: none;
 }
 
+/* Icônes de la barre d'input : centrage vertical parfait (pas de décalage baseline) */
+#input-container > * { align-self: center; }
+#home-btn svg,
+#attach-file-btn svg,
+#send-button svg,
+#stop-button svg { display: block; }
+
 /* ===== FOOTER ===== */
 .footer {
     text-align: center;
@@ -1133,6 +1145,7 @@ body { min-height: 100%; min-height: -webkit-fill-available; }
         max-height: 50px;
         align-items: center;
         gap: 4px;
+        padding-right: 50px; /* dégage la croix de fermeture */
         -webkit-overflow-scrolling: touch;
     }
     .settings-nav::-webkit-scrollbar { display: none; }
@@ -1242,8 +1255,9 @@ body { min-height: 100%; min-height: -webkit-fill-available; }
     align-items: center;
     justify-content: center;
     transition: all 0.18s ease;
-    z-index: 10;
+    z-index: 30;
 }
+.settings-close svg { display: block; }
 .settings-close:hover {
     background: rgba(239, 68, 68, 0.12);
     color: rgba(239, 68, 68, 0.8);
@@ -1676,7 +1690,7 @@ kbd {
         flex-wrap: nowrap;
         overflow-x: auto;
         overflow-y: hidden;
-        padding: 8px;
+        padding: 8px 50px 8px 8px; /* dégage la croix de fermeture */
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.055);
         max-height: 52px;
@@ -1800,7 +1814,7 @@ kbd {
     transition: border-color 0.2s ease;
 }
 
-.sidebar-search input::placeholder { color: rgba(255, 255, 255, 0.2); }
+.sidebar-search input::placeholder { color: #64748b; opacity: 1; }
 .sidebar-search input:focus { border-color: rgba(0, 210, 255, 0.22); }
 
 /* ===== TOAST ===== */
@@ -2283,6 +2297,13 @@ kbd {
     position: relative;
     z-index: 1;
 }
+/* La croix de fermeture reste positionnée en absolu (le sélecteur ci-dessus
+   la forçait en relative → elle tombait à gauche, à moitié coupée). */
+.settings-modal > .settings-close,
+.memory-modal > .memory-close-btn {
+    position: absolute;
+    z-index: 40;
+}
 
 /* =====================================================================
    LOGIN PREMIUM — Glassmorphism navy + Aurora + Social + Bouton dégradé
@@ -2478,7 +2499,7 @@ kbd {
 .model-option-main { font-size: 0.83rem; font-weight: 600; }
 .model-option-hint { font-size: 0.7rem; color: rgba(255, 255, 255, 0.4); }
 
-/* ---- Badge "Propulsé par Groq" ---- */
+/* ---- Badge fournisseur dynamique (Groq / Gemini) ---- */
 .powered-tag {
     display: inline-flex;
     align-items: center;
@@ -2487,12 +2508,23 @@ kbd {
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: rgba(0, 210, 255, 0.85);
+    border-radius: 20px;
+    transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+.powered-tag .powered-icon { display: inline-flex; }
+.powered-tag svg { filter: drop-shadow(0 0 4px currentColor); }
+/* Groq — cyan */
+.powered-tag.provider-groq {
+    color: rgba(0, 210, 255, 0.9);
     background: rgba(0, 210, 255, 0.06);
     border: 1px solid rgba(0, 210, 255, 0.15);
-    border-radius: 20px;
 }
-.powered-tag svg { color: #00d2ff; filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.6)); }
+/* Gemini — violet/bleu Google */
+.powered-tag.provider-gemini {
+    color: rgba(148, 130, 255, 0.95);
+    background: rgba(120, 100, 255, 0.08);
+    border: 1px solid rgba(140, 120, 255, 0.22);
+}
 
 /* ---- Compteur de vitesse fantôme (Tokens/s) ---- */
 .speed-meter {
@@ -2574,8 +2606,23 @@ kbd {
     border-radius: 24px;
     box-shadow: 0 0 24px rgba(0, 150, 255, 0.12);
 }
-.groq-banner strong { color: #00d2ff; }
-.groq-banner svg { color: #00d2ff; filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.7)); }
+.groq-banner { --provider-accent: #00d2ff; }
+.groq-banner strong { color: var(--provider-accent); }
+.groq-banner svg { color: var(--provider-accent); filter: drop-shadow(0 0 5px var(--provider-accent)); }
+/* Groq — cyan (défaut) */
+.groq-banner.provider-groq {
+    --provider-accent: #00d2ff;
+    background: rgba(0, 210, 255, 0.07);
+    border-color: rgba(0, 210, 255, 0.2);
+    box-shadow: 0 0 24px rgba(0, 150, 255, 0.12);
+}
+/* Gemini — violet Google */
+.groq-banner.provider-gemini {
+    --provider-accent: #a99bff;
+    background: rgba(120, 100, 255, 0.08);
+    border-color: rgba(140, 120, 255, 0.24);
+    box-shadow: 0 0 24px rgba(120, 100, 255, 0.14);
+}
 .empty-subtitle {
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.35);
@@ -2594,10 +2641,10 @@ kbd {
     align-items: center;
     gap: 10px;
     padding: 14px 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 14px;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(255, 255, 255, 0.88);
     font-family: var(--font-sans);
     font-size: 0.85rem;
     font-weight: 500;
@@ -2611,7 +2658,19 @@ kbd {
     transform: translateY(-2px);
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 150, 255, 0.08);
 }
-.suggestion-icon { font-size: 1.25rem; flex-shrink: 0; }
+.suggestion-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(0, 210, 255, 0.09);
+    color: #00d2ff;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.suggestion-icon svg { width: 17px; height: 17px; }
 
 /* ---- Sidebar : recherche en haut avec icône ---- */
 .sidebar-search { position: relative; padding: 0; }
@@ -2620,7 +2679,7 @@ kbd {
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.3);
+    color: #64748b;
     pointer-events: none;
 }
 .sidebar-search input { padding-left: 32px; }
@@ -2903,4 +2962,218 @@ kbd {
 @media (max-width: 480px) {
     .phone-setting-field { flex-direction: column; align-items: stretch; width: 100%; }
     .phone-setting-field .settings-input { width: 100%; }
+}
+
+/* =====================================================================
+   PAYWALL / ABONNEMENT — Nexus Pro
+   ===================================================================== */
+.paywall-modal { max-width: 420px; }
+.paywall-icon {
+    color: #ffd54a;
+    background: linear-gradient(135deg, rgba(255, 213, 74, 0.2), rgba(124, 40, 220, 0.18));
+    border-color: rgba(255, 213, 74, 0.3);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 22px rgba(255, 180, 0, 0.18);
+}
+.paywall-icon svg { filter: drop-shadow(0 0 6px rgba(255, 200, 0, 0.6)); }
+
+.paywall-price {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px;
+    margin: 2px 0 14px;
+}
+.paywall-amount {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    font-weight: 800;
+    background: var(--grad-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.paywall-period { font-size: 0.9rem; color: rgba(255, 255, 255, 0.4); }
+
+.paywall-features {
+    list-style: none;
+    text-align: left;
+    margin: 0 auto 18px;
+    max-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+.paywall-features li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.82);
+}
+.paywall-features svg { width: 15px; height: 15px; color: #10b981; flex-shrink: 0; }
+
+/* Carte Pro dans Paramètres › Facturation */
+.billing-pro-card {
+    margin-top: 6px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(0, 210, 255, 0.07), rgba(124, 40, 220, 0.07));
+    border: 1px solid rgba(0, 210, 255, 0.2);
+}
+.billing-pro-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.billing-pro-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.92);
+}
+.billing-pro-price {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.3rem;
+    background: var(--grad-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.billing-pro-price span { font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); -webkit-text-fill-color: rgba(255, 255, 255, 0.4); }
+.billing-pro-features {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.billing-pro-features li {
+    position: relative;
+    padding-left: 20px;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+.billing-pro-features li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #10b981;
+    font-weight: 700;
+}
+
+/* =====================================================================
+   RESPONSIVE DÉFINITIF — Modale Paramètres (placé en fin de fichier pour
+   gagner l'ordre de cascade sur les règles de base plus haut).
+   Corrige : modale plus large que l'écran + croix de fermeture coupée.
+   ===================================================================== */
+.settings-overlay { overflow: hidden; }
+.settings-modal { box-sizing: border-box; }
+
+@media (max-width: 768px) {
+    .settings-overlay {
+        padding: 0;
+        align-items: flex-end;      /* bottom sheet */
+        justify-content: center;
+    }
+    .settings-modal {
+        width: 100%;
+        max-width: 100%;            /* ne dépasse jamais l'écran */
+        height: 92dvh;
+        max-height: 92dvh;
+        border-radius: 20px 20px 0 0;
+        flex-direction: column;
+    }
+    /* Barre d'onglets horizontale : dégage la croix, défile toute seule */
+    .settings-nav {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-height: 52px;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 58px 8px 10px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        -webkit-overflow-scrolling: touch;
+    }
+    .settings-nav::-webkit-scrollbar { display: none; }
+    .settings-nav-item { white-space: nowrap; flex-shrink: 0; }
+    .settings-nav-item svg { display: none; }
+    .settings-content { width: 100%; }
+    .settings-panel { padding: 18px 16px calc(28px + env(safe-area-inset-bottom, 0px)); }
+    /* Croix toujours visible en haut à droite, au-dessus de la barre d'onglets */
+    .settings-close {
+        top: 10px;
+        right: 10px;
+        width: 30px;
+        height: 30px;
+        z-index: 40;
+    }
+}
+
+/* =====================================================================
+   La liste de messages DOIT défiler. La règle « liquid glass » plus haut
+   force overflow:hidden sur #chat-box, ce qui bloquait le défilement une
+   fois la page verrouillée en hauteur. On rétablit le scroll ici (fin de
+   fichier = priorité de cascade). Seul #chat-box défile ; la barre de
+   saisie reste fixe en bas.
+   ===================================================================== */
+#chat-box {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* =====================================================================
+   NOTIFICATIONS — en-tête (bouton Tester) + contrôles par ligne
+   (toggle push + badge « E-mail · À venir »).
+   ===================================================================== */
+.notif-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 2px 0 12px;
+}
+.notif-test-btn {
+    flex-shrink: 0;
+    padding: 7px 16px;
+    background: rgba(0, 210, 255, 0.1);
+    border: 1px solid rgba(0, 210, 255, 0.22);
+    border-radius: 9px;
+    color: #00d2ff;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+.notif-test-btn:hover {
+    background: rgba(0, 210, 255, 0.18);
+    border-color: rgba(0, 210, 255, 0.4);
+}
+.notif-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+.notif-soon {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.42);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 20px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    cursor: default;
+}
+@media (max-width: 480px) {
+    .notif-soon { display: none; } /* garde l'écran lisible sur petit mobile */
 }

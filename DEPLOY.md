@@ -130,7 +130,78 @@ vérification des tokens.
 > Tant que `firebase-config.js` contient les placeholders `REPLACE_…`, les
 > boutons sociaux affichent un message d'aide au lieu de lancer le popup.
 
-## 5. Résultat
+## 5. Abonnement Nexus Pro (Stripe) — optionnel
+
+Le **quota gratuit** (20 messages/jour, réglable via `FREE_DAILY_LIMIT`) est
+appliqué **sans Stripe** : personne ne peut dépasser, tes coûts sont bornés.
+Pour permettre aux utilisateurs de passer en illimité à **18€/mois**, branche
+Stripe :
+
+### a. Créer le produit + prix (dashboard Stripe)
+Stripe → **Produits** → créer « Nexus Pro » → prix **récurrent 18€/mois** →
+copie l'ID du prix (`price_...`).
+
+### b. Récupérer les clés
+- **Clé secrète** : Stripe → Développeurs → Clés API → `sk_live_...` (ou `sk_test_...`).
+- **Webhook** : Stripe → Développeurs → Webhooks → *Add endpoint* :
+  - URL : `https://<URL_CLOUD_RUN>/billing/webhook`
+  - Événements : `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+  - copie le **signing secret** (`whsec_...`).
+
+### c. Créer les secrets + les brancher sur Cloud Run
+```bash
+echo -n "sk_live_..."  | gcloud secrets create STRIPE_SECRET_KEY     --data-file=-
+echo -n "price_..."    | gcloud secrets create STRIPE_PRICE_ID       --data-file=-
+echo -n "whsec_..."    | gcloud secrets create STRIPE_WEBHOOK_SECRET --data-file=-
+
+PROJECT_NUMBER=$(gcloud projects describe MON_PROJECT_ID --format='value(projectNumber)')
+for S in STRIPE_SECRET_KEY STRIPE_PRICE_ID STRIPE_WEBHOOK_SECRET; do
+  gcloud secrets add-iam-policy-binding $S \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+Puis **décommente** la ligne Stripe dans `backend/cloudbuild.yaml`
+(`--set-secrets=…,STRIPE_SECRET_KEY=…`) et redéploie le backend.
+
+> Tant que ces secrets sont absents, la facturation est désactivée
+> proprement : le quota gratuit reste appliqué et le bouton « S'abonner »
+> affiche « indisponible ».
+
+## 6. Notifications push (Web Push / VAPID) — optionnel
+
+Le front embarque un Service Worker (`frontend/sw.js`) et s'abonne au push via
+`PushManager`. Le serveur envoie les notifications avec la librairie `web-push`
+et une paire de clés **VAPID**. Tout est **désactivé par défaut** côté
+utilisateur ; sans clés VAPID, le push serveur est simplement inactif (les
+notifications locales de test fonctionnent quand même).
+
+### a. Générer les clés VAPID
+```bash
+npx web-push generate-vapid-keys
+# → Public Key: B... / Private Key: ...
+```
+
+### b. Créer les secrets + les brancher sur Cloud Run
+```bash
+echo -n "CLE_PUBLIQUE"  | gcloud secrets create VAPID_PUBLIC_KEY  --data-file=-
+echo -n "CLE_PRIVEE"    | gcloud secrets create VAPID_PRIVATE_KEY --data-file=-
+
+PROJECT_NUMBER=$(gcloud projects describe MON_PROJECT_ID --format='value(projectNumber)')
+for S in VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY; do
+  gcloud secrets add-iam-policy-binding $S \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+Puis **ajoute** les clés dans le `--set-secrets` de `backend/cloudbuild.yaml`
+(`,VAPID_PUBLIC_KEY=VAPID_PUBLIC_KEY:latest,VAPID_PRIVATE_KEY=VAPID_PRIVATE_KEY:latest`)
+et, si tu veux, `VAPID_SUBJECT` en `--set-env-vars`. Redéploie le backend.
+
+> Le Service Worker et le push exigent **HTTPS** : ça marche sur
+> `https://…web.app`, pas en `http://` (sauf `localhost`).
+
+## 7. Résultat
 
 - Frontend : **https://nexus-ai.web.app**
 - Backend  : URL Cloud Run (référencée dans `frontend/js/config.js`)
