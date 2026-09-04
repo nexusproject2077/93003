@@ -497,7 +497,12 @@ body {
     padding: 28px 24px 20px;
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    /* Hauteur verrouillée sur l'écran : seule la liste de messages défile,
+       la barre de saisie reste toujours visible en bas. */
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
     transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     z-index: 1;
@@ -678,7 +683,7 @@ h1 {
 #chat-box {
     width: 100%;
     max-width: 760px;
-    min-height: 380px;
+    min-height: 0;
     padding: 22px;
     overflow-y: auto;
     margin: 8px auto 14px;
