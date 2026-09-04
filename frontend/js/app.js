@@ -831,6 +831,14 @@ function generateRandomCode() {
     do { l3 = generateRandomLetter(); } while (l3 === l1 || l3 === l2);
     return `${l1}${Math.floor(Math.random()*10)}${l2}${l3}`;
 }
+// Code Reims (ex : DS7U) : Lettre, Lettre, Chiffre, Lettre — distinct du code Tcat.
+function generateReimsCode() {
+    const l1 = generateRandomLetter();
+    let l2, l4;
+    do { l2 = generateRandomLetter(); } while (l2 === l1);
+    do { l4 = generateRandomLetter(); } while (l4 === l1 || l4 === l2);
+    return `${l1}${l2}${Math.floor(Math.random()*10)}${l4}`;
+}
 
 // ===== SYSTEM PROMPT BUILDER =====
 function buildSystemPrompt() {
@@ -1073,6 +1081,20 @@ async function handleMessage() {
         // Numéro de l'utilisateur connecté (chiffres uniquement), sinon numéro par défaut
         const ticketPhone = ((getUser() || {}).phone || '').replace(/\D/g, '') || '0783643942';
         const ticket = `Titre 1 voyage\n\nA présenter au conducteur à la montée\nLe ${formatDate(now)}\nDe ${formatTime(now)} a ${formatTime(oneHourLater)}\n\n1.35 E\n\n${generateRandomSequence()}\n\n${ticketPhone}${generateRandomCode()}\n\nCGV : www.tcat.fr/cgv-ticket-sms`;
+        setTimeout(async () => {
+            await addMessage('bot-message', ticket, false, true);
+            sendButton.disabled = false;
+            userInput.disabled  = false;
+            userInput.focus();
+            toggleStopButton(false);
+        }, 500);
+        navigator.clipboard.writeText(ticket).catch(console.error);
+    } else if (message === '1h15' && attachedFiles.length === 0) {
+        // Easter egg Grand Reims Mobilités — valable 1h15 (75 min), 1.80€
+        const now = new Date();
+        const endLater = new Date(now.getTime() + 75 * 60 * 1000);
+        const ticketPhone = ((getUser() || {}).phone || '').replace(/\D/g, '') || '0760438076';
+        const ticket = `GRAND REIMS MOBILITES\nTitre 1 voyage\nValable 1h15 de ${formatTime(now)} à ${formatTime(endLater)}\nle ${formatDate(now)}\n1.80€ TTC\n\n\n${generateRandomSequence()}\n\n\n${ticketPhone}${generateReimsCode()}\n\n\nwww.grandreims-mobilites.fr`;
         setTimeout(async () => {
             await addMessage('bot-message', ticket, false, true);
             sendButton.disabled = false;
