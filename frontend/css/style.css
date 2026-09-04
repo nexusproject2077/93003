@@ -3116,3 +3116,17 @@ kbd {
         z-index: 40;
     }
 }
+
+/* =====================================================================
+   La liste de messages DOIT défiler. La règle « liquid glass » plus haut
+   force overflow:hidden sur #chat-box, ce qui bloquait le défilement une
+   fois la page verrouillée en hauteur. On rétablit le scroll ici (fin de
+   fichier = priorité de cascade). Seul #chat-box défile ; la barre de
+   saisie reste fixe en bas.
+   ===================================================================== */
+#chat-box {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
